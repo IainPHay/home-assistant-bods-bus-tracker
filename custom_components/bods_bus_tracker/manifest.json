@@ -1,0 +1,14 @@
+{
+  "codeowners": [
+    "@IainPHay"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/IainPHay/home-assistant-bods-bus-tracker",
+  "domain": "bods_bus_tracker",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/IainPHay/home-assistant-bods-bus-tracker/issues",
+  "name": "BODS Bus Tracker",
+  "requirements": [],
+  "version": "0.3.1"
+}
