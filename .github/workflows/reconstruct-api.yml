@@ -1,0 +1,29 @@
+name: Reconstruct API source
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  reconstruct:
+    if: ${{ hashFiles('.build/api.py.gz.b64') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct clean API source
+        shell: bash
+        run: |
+          base64 --decode .build/api.py.gz.b64 | gzip --decompress > custom_components/bods_bus_tracker/api.py
+          rm -rf .build
+          rm -f .github/workflows/reconstruct-api.yml
+      - name: Commit reconstructed source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Add BODS GTFS and ETA engine"
+          git push
