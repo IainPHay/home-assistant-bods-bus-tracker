@@ -1,0 +1,101 @@
+{
+  "title": "BODS Bus Tracker",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Bus Open Data Service",
+        "description": "Enter your free BODS API key once. Bus stops are added separately beneath this account.",
+        "data": {
+          "api_key": "BODS API key"
+        },
+        "data_description": {
+          "api_key": "Create a free account at data.bus-data.dft.gov.uk and copy the API key from your account."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to BODS",
+        "description": "The BODS API key is no longer being accepted. Enter a replacement key; all configured stops will continue to use it.",
+        "data": {
+          "api_key": "BODS API key"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to BODS.",
+      "invalid_auth": "The BODS API key was rejected.",
+      "unknown": "Unexpected error. Check the Home Assistant log for details."
+    },
+    "abort": {
+      "account_already_configured": "A BODS account is already configured. Add another bus stop to the existing BODS Bus Tracker entry instead.",
+      "reauth_successful": "BODS API key updated successfully."
+    }
+  },
+  "config_subentries": {
+    "stop": {
+      "title": "Bus stop",
+      "step": {
+        "user": {
+          "title": "Add a bus stop",
+          "description": "Choose a BODS timetable region and search by stop name, ATCO code or NaPTAN/SMS code. Automatic region detection requires an exact stop code.",
+          "data": {
+            "region": "Timetable region",
+            "stop_search": "Stop name or code"
+          },
+          "data_description": {
+            "region": "Choose a region to search by name, or Auto detect when you already know the exact stop code.",
+            "stop_search": "Examples: The Fairway, 3100Z199842, or nldawjgp. The exact stop normally determines the direction of travel."
+          }
+        },
+        "stop_select": {
+          "title": "Select the exact stop",
+          "description": "Several stops matched your search. Choose the exact boarding point/direction.",
+          "data": {
+            "stop_selection": "Bus stop"
+          }
+        },
+        "services": {
+          "title": "Choose services",
+          "description": "{stop_name} ({stop_atco}) was found in {region}. Select the services to include at this stop.",
+          "data": {
+            "services": "Services",
+            "poll_interval": "Live update interval"
+          },
+          "data_description": {
+            "services": "Available route/operator combinations discovered from the regional GTFS timetable. Destination/headsigns are shown where BODS supplies them.",
+            "poll_interval": "How often to poll BODS vehicle locations for this stop. 30 seconds is recommended."
+          }
+        },
+        "reconfigure": {
+          "title": "Configure bus stop",
+          "description": "Change the services and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
+          "data": {
+            "services": "Services",
+            "poll_interval": "Live update interval"
+          },
+          "data_description": {
+            "poll_interval": "Each stop can use its own live update interval. 30 seconds is recommended."
+          }
+        }
+      },
+      "error": {
+        "auto_requires_stop_code": "Automatic region detection requires an exact ATCO/NaPTAN stop code. Choose a region if you want to search by name.",
+        "cannot_connect": "Unable to connect to BODS.",
+        "gtfs_download_failed": "Unable to download a valid regional GTFS timetable.",
+        "invalid_auth": "The BODS API key was rejected.",
+        "no_services": "The stop was found but no BODS services with operator identifiers could be discovered.",
+        "select_service": "Select at least one service.",
+        "stop_not_found_all_regions": "That exact stop code was not found in the available BODS regional timetables.",
+        "stop_search_no_results": "No stops matched that name or code in the selected region.",
+        "stop_search_required": "Enter a stop name or code.",
+        "stop_selection_invalid": "Select one of the discovered stops.",
+        "unknown": "Unexpected error. Check the Home Assistant log for details."
+      },
+      "abort": {
+        "already_configured": "This stop is already configured in this BODS account.",
+        "gtfs_download_failed": "Unable to download a valid regional GTFS timetable.",
+        "reconfigure_successful": "Bus stop configuration updated successfully.",
+        "unknown": "Unexpected error. Check the Home Assistant log for details."
+      }
+    }
+  }
+}
