@@ -1,0 +1,55 @@
+name: Bug report
+description: Report a problem with BODS Bus Tracker
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. **Do not include your BODS API key.**
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.8.x
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: BODS Bus Tracker version
+      placeholder: 0.3.1
+    validations:
+      required: true
+  - type: input
+    id: region
+    attributes:
+      label: BODS region
+      placeholder: North East
+    validations:
+      required: true
+  - type: input
+    id: stop
+    attributes:
+      label: Stop ATCO code
+      placeholder: 3100Z199842
+    validations:
+      required: true
+  - type: input
+    id: service
+    attributes:
+      label: Route/operator
+      placeholder: X18 / Arriva North East
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the approximate date/time and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or diagnostics
+      description: Remove credentials before posting. Home Assistant integration diagnostics are preferred where available.
+      render: text
