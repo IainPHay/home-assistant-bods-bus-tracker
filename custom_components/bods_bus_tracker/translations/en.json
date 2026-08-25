@@ -32,7 +32,11 @@
   },
   "config_subentries": {
     "stop": {
-      "title": "Bus stop",
+      "entry_type": "Bus stop",
+      "initiate_flow": {
+        "user": "Add bus stop",
+        "reconfigure": "Configure bus stop"
+      },
       "step": {
         "user": {
           "title": "Add a bus stop",
