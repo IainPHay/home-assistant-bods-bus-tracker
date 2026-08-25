@@ -1,0 +1,116 @@
+# BODS Bus Tracker generic departure-board card
+# Replace BOTH occurrences of sensor.YOUR_NEXT_BUS_ENTITY with the stop's
+# native "Next bus" entity ID.
+type: markdown
+entity_id:
+  - sensor.YOUR_NEXT_BUS_ENTITY
+content: |
+  {% set entity = 'sensor.YOUR_NEXT_BUS_ENTITY' %}
+  {% set departures = state_attr(entity, 'departures') or [] %}
+  {% set stop = state_attr(entity, 'stop') or {} %}
+  {% set updated = state_attr(entity, 'tracker_updated') %}
+  {% set health = state_attr(entity, 'data_status') %}
+
+  {% macro due_label(minutes) -%}
+    {% set m = minutes | int(999) %}
+    {% if m <= 0 -%}
+      Due now
+    {%- elif m == 1 -%}
+      1 min
+    {%- else -%}
+      {{ m }} min
+    {%- endif %}
+  {%- endmacro %}
+
+  {% macro timing_label(row, compact=false) -%}
+    {% set source = row.get('source', 'scheduled') %}
+    {% set raw = row.get('raw_delay_minutes') %}
+    {% if raw is none %}
+      {% set raw = row.get('delay_minutes') %}
+    {% endif %}
+    {% set timing = row.get('timing_status') %}
+
+    {# Compatibility with older departure attributes. #}
+    {% if timing is none and source == 'live' and raw is not none %}
+      {% if raw | float > 0.5 %}
+        {% set timing = 'late' %}
+      {% elif raw | float < -0.5 %}
+        {% set timing = 'early' %}
+      {% else %}
+        {% set timing = 'on_time' %}
+      {% endif %}
+    {% endif %}
+
+    {% if source != 'live' -%}
+    {%- elif timing == 'early' and raw is not none -%}
+      {{ '%.1f' | format((raw | float) | abs) }}{% if compact %}m{% else %} min{% endif %} early{% if row.get('prediction_clamped', false) %}{% if compact %} · held{% else %} · held to timetable{% endif %}{% endif %}
+    {%- elif timing == 'late' and raw is not none -%}
+      {{ '%.1f' | format((raw | float) | abs) }}{% if compact %}m{% else %} min{% endif %} late
+    {%- elif timing == 'on_time' -%}
+      On time
+    {%- elif raw is not none -%}
+      {{ '%.1f' | format((raw | float) | abs) }}{% if compact %}m{% else %} min{% endif %}
+    {%- endif %}
+  {%- endmacro %}
+
+  {% set live_count = departures | selectattr('source', 'equalto', 'live') | list | count %}
+
+  ## 🚌 {{ stop.get('name', 'Bus departures') }}
+
+  {% if departures | count > 0 %}
+    {% set next = departures[0] %}
+    {% set next_source = next.get('source', 'scheduled') %}
+    {% set next_expected = next.get('expected') %}
+
+  ### {{ next.get('route', '?') }} · {{ due_label(next.get('minutes', 999)) }}
+
+  {% if next_source == 'live' %}
+  🟢 **Live**{% if next.get('destination') %} → {{ next.get('destination') }}{% endif %}{% if next_expected %} · Expected **{{ as_timestamp(next_expected) | timestamp_custom('%H:%M', true) }}**{% endif %}{% set label = timing_label(next) %}{% if label | trim %} · **{{ label }}**{% endif %}
+  {% if next.get('vehicle') %}
+  Vehicle {{ next.get('vehicle') }}
+  {% endif %}
+  {% else %}
+  🕒 **Timetable**{% if next.get('destination') %} → {{ next.get('destination') }}{% endif %}{% if next_expected %} · **{{ as_timestamp(next_expected) | timestamp_custom('%H:%M', true) }}**{% endif %}
+  {% endif %}
+
+  ---
+
+  | Service | Due |
+  | :--- | ---: |
+  {% for row in departures[:8] -%}
+  {% set source = row.get('source', 'scheduled') %}
+  {% set expected = row.get('expected') %}
+  | **{{ row.get('route', '?') }}** {% if source == 'live' %}🟢 Live{% else %}🕒 Timetable{% endif %} | **{{ due_label(row.get('minutes', 999)) }}**{% if expected %}<br>{{ as_timestamp(expected) | timestamp_custom('%H:%M', true) }}{% endif %}{% if source == 'live' %}{% set label = timing_label(row, true) %}{% if label | trim %} · {{ label }}{% endif %}{% endif %} |
+  {% endfor %}
+
+  {% else %}
+
+  ### No upcoming buses
+
+  No matching departures are currently available.
+
+  {% endif %}
+
+  ---
+
+  {% if health == 'ok' %}
+  ✅ **Tracker updating**
+  {% elif health == 'degraded' %}
+  ⚠️ **Live data degraded**
+  {% elif health == 'scheduled_only' %}
+  🕒 **Timetable data only**
+  {% else %}
+  ❔ **Tracker status unknown**
+  {% endif %}
+
+  {% if live_count == 1 %}
+  🟢 **1 approaching service live-tracked**
+  {% elif live_count > 1 %}
+  🟢 **{{ live_count }} approaching services live-tracked**
+  {% else %}
+  🕒 **No approaching services currently live-tracked**
+  {% endif %}
+
+  {% if updated %}
+  Updated {{ relative_time(as_datetime(updated)) }} ago
+  {% endif %}
