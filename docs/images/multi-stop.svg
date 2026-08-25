@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="500" viewBox="0 0 1040 500">
+  <rect width="1040" height="500" rx="22" fill="#f5f7fa"/>
+  <rect x="36" y="34" width="968" height="432" rx="18" fill="#fff" stroke="#d8dde5" stroke-width="2"/>
+  <text x="78" y="92" font-family="Arial,sans-serif" font-size="34" font-weight="700" fill="#111827">🚌 BODS Bus Tracker</text>
+  <text x="78" y="128" font-family="Arial,sans-serif" font-size="18" fill="#64748b">One BODS account · multiple independently configured bus stops</text>
+  <rect x="78" y="164" width="884" height="116" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="108" y="205" font-family="Arial,sans-serif" font-size="24" font-weight="700" fill="#1f2937">The Fairway (3100Z199842)</text>
+  <text x="108" y="240" font-family="Arial,sans-serif" font-size="18" fill="#475569">North East · X14 · X15 · X16 · X18 · 30 s polling</text>
+  <circle cx="912" cy="220" r="11" fill="#22c55e"/>
+  <text x="936" y="227" font-family="Arial,sans-serif" font-size="17" fill="#166534">updating</text>
+  <rect x="78" y="304" width="884" height="116" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="108" y="345" font-family="Arial,sans-serif" font-size="24" font-weight="700" fill="#1f2937">Haymarket Bus Station (4100008HAYQS)</text>
+  <text x="108" y="380" font-family="Arial,sans-serif" font-size="18" fill="#475569">North East · independently selected services · shared API key</text>
+  <circle cx="912" cy="360" r="11" fill="#22c55e"/>
+  <text x="936" y="367" font-family="Arial,sans-serif" font-size="17" fill="#166534">updating</text>
+</svg>
