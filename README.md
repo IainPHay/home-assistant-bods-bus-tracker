@@ -325,6 +325,8 @@ The repository includes GitHub Actions for:
 - official HACS repository validation;
 - Home Assistant Hassfest validation.
 
+The repository also carries the HACS-relevant GitHub topics, including `home-assistant`, `hacs`, and `hacs-integration`.
+
 HACS requires one integration under `custom_components`, the required manifest metadata, and a root `brand/icon.png`; this repository is structured accordingly.
 
 ## Data sources and attribution
