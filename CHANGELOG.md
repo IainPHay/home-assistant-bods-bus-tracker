@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 — 2026-08-26
+
+- Documentation/packaging-only release; no ETA, matching, configuration or runtime behaviour changes from 0.3.1.
+- Updated the packaged README so HACS renders the Version and License badges correctly from the release tag.
+- Updated packaged screenshot links to absolute GitHub raw URLs so screenshots render correctly inside HACS.
+- Preserved the current preferred public README wording while updating the displayed version to 0.3.2.
+
 ## 0.3.1 — 2026-08-25
 
 - Prepared 0.3.1 as the first public HACS-compatible beta repository with expanded documentation, screenshots and issue templates. Integration behaviour remains 0.3.1.
