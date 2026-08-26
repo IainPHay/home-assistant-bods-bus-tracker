@@ -1,0 +1,96 @@
+# BODS Bus Tracker generic terminus card
+# Intended for a stop configured as "Arrivals and departures".
+# Replace BOTH occurrences of sensor.YOUR_NEXT_BUS_ENTITY with the stop's
+# native "Next bus" entity ID from Home Assistant.
+type: markdown
+entity_id:
+  - sensor.YOUR_NEXT_BUS_ENTITY
+content: |
+  {% set entity = 'sensor.YOUR_NEXT_BUS_ENTITY' %}
+  {% set stop = state_attr(entity, 'stop') or {} %}
+  {% set departures = state_attr(entity, 'departures') or [] %}
+  {% set arrivals = state_attr(entity, 'arrivals') or [] %}
+  {% set terminus = state_attr(entity, 'terminus') or {} %}
+  {% set at_stand = terminus.get('at_stand_departures') or [] %}
+  {% set arrived = terminus.get('arrived_vehicles') or [] %}
+  {% set approaching = terminus.get('approaching_arrivals') or [] %}
+  {% set walking_minutes = state_attr(entity, 'walking_minutes') %}
+  {% set leave_by = state_attr(entity, 'leave_by') %}
+  {% set leave_in = state_attr(entity, 'leave_in_minutes') %}
+  {% set leave_now = state_attr(entity, 'leave_now') %}
+  {% set updated = state_attr(entity, 'tracker_updated') %}
+  {% set health = state_attr(entity, 'data_status') %}
+
+  ## 🚌 {{ stop.get('name', 'Bus terminus') }}
+
+  {% if at_stand | count > 0 %}
+  {% for row in at_stand[:2] %}
+  🟢 **At stand: {{ row.get('route', '?') }}{% if row.get('destination') %} → {{ row.get('destination') }}{% endif %}**{% if row.get('expected') %} · departs **{{ as_timestamp(row.get('expected')) | timestamp_custom('%H:%M', true) }}**{% endif %}{% if row.get('vehicle') %} · Vehicle {{ row.get('vehicle') }}{% endif %}
+  {% endfor %}
+  {% endif %}
+
+  {% if arrived | count > 0 %}
+  {% for row in arrived[:2] %}
+  🔵 **Arrived: {{ row.get('route', '?') }}{% if row.get('origin') %} from {{ row.get('origin') }}{% endif %}**{% if row.get('vehicle') %} · Vehicle {{ row.get('vehicle') }}{% endif %}
+  {% endfor %}
+  {% endif %}
+
+  {% if approaching | count > 0 %}
+  {% for row in approaching[:2] %}
+  ➡️ **Approaching: {{ row.get('route', '?') }}{% if row.get('origin') %} from {{ row.get('origin') }}{% endif %}** · {% if row.get('minutes', 0) | int <= 0 %}Due now{% elif row.get('minutes') | int == 1 %}1 min{% else %}{{ row.get('minutes') }} min{% endif %}{% if row.get('expected') %} · {{ as_timestamp(row.get('expected')) | timestamp_custom('%H:%M', true) }}{% endif %}
+  {% endfor %}
+  {% endif %}
+
+  {% if leave_by %}
+  {% if leave_now %}
+  🚶 <font color="#d32f2f">**Leave now**</font>{% if walking_minutes is not none %} · {{ walking_minutes }} min walk{% endif %}
+  {% elif leave_in is not none %}
+  🚶 Leave in **{{ leave_in }} min** · leave by **{{ as_timestamp(leave_by) | timestamp_custom('%H:%M', true) }}**
+  {% endif %}
+  {% endif %}
+
+  ### Departures
+  {% if departures | count > 0 %}
+  | Service | Due |
+  | :--- | :--- |
+  {% for row in departures[:4] -%}
+  {% set mins = row.get('minutes', 999) | int(999) -%}
+  {% set expected = row.get('expected') -%}
+  {% set source = row.get('source', 'scheduled') -%}
+  {% set raw = row.get('raw_delay_minutes') -%}
+  {% if raw is none -%}{% set raw = row.get('delay_minutes') -%}{% endif -%}
+  {% set timing = row.get('timing_status') -%}
+  | **{{ row.get('route', '?') }}** {% if source == 'live' %}🟢{% else %}🕒{% endif %}{% if row.get('destination') %} → {{ row.get('destination') }}{% endif %} | **{% if mins <= 0 %}Due now{% elif mins == 1 %}1 min{% else %}{{ mins }} min{% endif %}**{% if expected %} · {{ as_timestamp(expected) | timestamp_custom('%H:%M', true) }}{% endif %}{% if source == 'live' and timing == 'late' and raw is not none %} · <font color="#d32f2f">**{{ '%.1f' | format(raw | float | abs) }}m late**</font>{% elif source == 'live' and timing == 'early' and raw is not none %} · {{ '%.1f' | format(raw | float | abs) }}m early{% if row.get('prediction_clamped', false) %} · held{% endif %}{% elif source == 'live' and timing == 'on_time' %} · On time{% endif %} |
+  {% endfor %}
+  {% if departures | count > 4 %}
+  *+{{ departures | count - 4 }} later departure{% if departures | count - 4 != 1 %}s{% endif %}*
+  {% endif %}
+  {% else %}
+  No upcoming departures.
+  {% endif %}
+
+  ### Arrivals
+  {% if arrivals | count > 0 %}
+  | Service | Due |
+  | :--- | :--- |
+  {% for row in arrivals[:4] -%}
+  {% set mins = row.get('minutes', 999) | int(999) -%}
+  {% set expected = row.get('expected') -%}
+  {% set source = row.get('source', 'scheduled') -%}
+  {% set raw = row.get('raw_delay_minutes') -%}
+  {% if raw is none -%}{% set raw = row.get('delay_minutes') -%}{% endif -%}
+  {% set timing = row.get('timing_status') -%}
+  | **{{ row.get('route', '?') }}** {% if source == 'live' %}🟢{% else %}🕒{% endif %}{% if row.get('origin') %} ← {{ row.get('origin') }}{% endif %} | **{% if row.get('at_stop') %}At terminus{% elif mins <= 0 %}Due now{% elif mins == 1 %}1 min{% else %}{{ mins }} min{% endif %}**{% if expected %} · {{ as_timestamp(expected) | timestamp_custom('%H:%M', true) }}{% endif %}{% if source == 'live' and timing == 'late' and raw is not none %} · <font color="#d32f2f">**{{ '%.1f' | format(raw | float | abs) }}m late**</font>{% elif source == 'live' and timing == 'early' and raw is not none %} · {{ '%.1f' | format(raw | float | abs) }}m early{% elif source == 'live' and timing == 'on_time' %} · On time{% endif %} |
+  {% endfor %}
+  {% if arrivals | count > 4 %}
+  *+{{ arrivals | count - 4 }} later arrival{% if arrivals | count - 4 != 1 %}s{% endif %}*
+  {% endif %}
+  {% else %}
+  No upcoming arrivals.
+  {% endif %}
+
+  ---
+
+  {% set live_departures = departures | selectattr('source', 'equalto', 'live') | list | count %}
+  {% set live_arrivals = arrivals | selectattr('source', 'equalto', 'live') | list | count %}
+  {% if health == 'ok' %}✅ **Tracker updating**{% elif health == 'degraded' %}⚠️ **Live data degraded**{% elif health == 'scheduled_only' %}🕒 **Timetable data only**{% else %}❔ **Tracker status unknown**{% endif %} · {{ live_departures }} live departure{% if live_departures != 1 %}s{% endif %} · {{ live_arrivals }} live arrival{% if live_arrivals != 1 %}s{% endif %}{% if updated %} · Updated {{ relative_time(as_datetime(updated)) }} ago{% endif %}
