@@ -57,3 +57,14 @@ def test_fractional_minute_rounds_up_before_leave_time() -> None:
     data = apply_walking_guidance(_snapshot(), now, 10)["next_bus"]
     assert data["leave_in_minutes"] == 1
     assert data["leave_now"] is False
+
+
+def test_unavailable_next_bus_has_no_leave_guidance() -> None:
+    now = datetime(2026, 8, 26, 10, 0, tzinfo=TZ)
+    snapshot = _snapshot()
+    snapshot["next_bus"]["available"] = False
+    data = apply_walking_guidance(snapshot, now, 10)["next_bus"]
+    assert data["walking_minutes"] == 10
+    assert data["leave_by"] is None
+    assert data["leave_in_minutes"] is None
+    assert data["leave_now"] is False
