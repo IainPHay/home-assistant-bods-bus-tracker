@@ -372,7 +372,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                     try:
                         found = await _async_auto_detect_stop(self.hass, query)
                     except Exception:
-                        _LOGGGER.exception("Unexpected error auto-detecting BODS region")
+                        _LOGGER.exception("Unexpected error auto-detecting BODS region")
                         errors["base"] = "unknown"
                     else:
                         if found is None:
@@ -386,7 +386,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             except GTFSDownloadError:
                                 errors["base"] = "gtfs_download_failed"
                             except Exception:
-                                _LOGGGER.exception(
+                                _LOGGER.exception(
                                     "Unexpected error discovering BODS stop services"
                                 )
                                 errors["base"] = "unknown"
@@ -404,7 +404,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                 except GTFSDownloadError:
                     errors["base"] = "gtfs_download_failed"
                 except Exception:
-                    _LOGGGER.exception("Unexpected error searching BODS stops")
+                    _LOGGER.exception("Unexpected error searching BODS stops")
                     errors["base"] = "unknown"
                 else:
                     if not results:
@@ -415,7 +415,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                                 region, results[0].stop_id
                             )
                         except Exception:
-                            _LOGGGER.exception(
+                            _LOGGER.exception(
                                 "Unexpected error discovering BODS stop services"
                             )
                             errors["base"] = "unknown"
@@ -495,7 +495,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                 except (ClientError, TimeoutError):
                     errors["base"] = "cannot_connect"
                 except Exception:
-                    _LOGGGER.exception("Unexpected error validating selected BODS service")
+                    _LOGGER.exception("Unexpected error validating selected BODS service")
                     errors["base"] = "unknown"
                 else:
                     unique_id = f"{self._data[CONF_REGION]}:{self._data[CONF_STOP_ATCO]}"
