@@ -29,6 +29,7 @@ The exact entity ID is created by Home Assistant from the configured stop and ma
 - Late-running values highlighted in red for quick recognition.
 - `held to timetable` when an early vehicle is at the origin of its next journey.
 - Vehicle ID for the headline service when a live match is available.
+- Optional `Leave in` / `Leave now` guidance when a walking time is configured for the stop.
 - The next five departures in a compact, left-aligned two-column table.
 - A `+N later departures` indication when more services are available.
 - A one-line tracker/data-health, live-tracked count and last-update footer.

@@ -62,22 +62,26 @@
           "description": "{stop_name} ({stop_atco}) was found in {region}. Select the services to include at this stop.",
           "data": {
             "services": "Services",
-            "poll_interval": "Live update interval"
+            "poll_interval": "Live update interval",
+            "walking_time": "Walking time to stop"
           },
           "data_description": {
             "services": "Available route/operator combinations discovered from the regional GTFS timetable. Destination/headsigns are shown where BODS supplies them.",
-            "poll_interval": "How often to poll BODS vehicle locations for this stop. 30 seconds is recommended."
+            "poll_interval": "How often to poll BODS vehicle locations for this stop. 30 seconds is recommended.",
+            "walking_time": "Minutes needed to walk from your usual starting point to this boarding stop. Set to 0 to disable Leave by/Leave now guidance. Include any personal margin you want."
           }
         },
         "reconfigure": {
           "title": "Configure bus stop",
-          "description": "Change the services and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
+          "description": "Change the services, walking time and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
           "data": {
             "services": "Services",
-            "poll_interval": "Live update interval"
+            "poll_interval": "Live update interval",
+            "walking_time": "Walking time to stop"
           },
           "data_description": {
-            "poll_interval": "Each stop can use its own live update interval. 30 seconds is recommended."
+            "poll_interval": "Each stop can use its own live update interval. 30 seconds is recommended.",
+            "walking_time": "Minutes needed to walk from your usual starting point to this boarding stop. Set to 0 to disable Leave by/Leave now guidance."
           }
         }
       },

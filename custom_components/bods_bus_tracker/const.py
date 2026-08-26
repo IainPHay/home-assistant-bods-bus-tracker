@@ -4,7 +4,7 @@ from __future__ import annotations
 
 DOMAIN = "bods_bus_tracker"
 VERSION = "0.3.2"
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "binary_sensor"]
 SUBENTRY_TYPE_STOP = "stop"
 
 CONF_API_KEY = "api_key"
@@ -16,11 +16,15 @@ CONF_STOP_SELECTION = "stop_selection"
 CONF_SERVICES = "services"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_LEGACY_ENTITY_IDS = "legacy_entity_ids"
+CONF_WALKING_TIME = "walking_time"
 
 AUTO_REGION = "auto"
 DEFAULT_POLL_INTERVAL = 30
 MIN_POLL_INTERVAL = 15
 MAX_POLL_INTERVAL = 300
+DEFAULT_WALKING_TIME = 0
+MIN_WALKING_TIME = 0
+MAX_WALKING_TIME = 120
 DEFAULT_GTFS_REFRESH_HOURS = 24
 MAX_LIVE_AGE_SECONDS = 180
 STOP_SEARCH_LIMIT = 25

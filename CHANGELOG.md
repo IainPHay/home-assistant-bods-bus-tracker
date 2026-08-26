@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — walking-time guidance
+
+- Added optional per-stop walking time configuration.
+- Added Leave by and Leave in sensors derived from the already-calculated next-bus expected time.
+- Added a Leave now binary sensor for Home Assistant automations.
+- Added optional walking guidance to the generic dashboard card.
+- Walking guidance is post-processing only and does not alter the ETA/matching engine.
+
 ## 0.3.2 — 2026-08-26
 
 - Documentation/packaging-only release; no ETA, matching, configuration or runtime behaviour changes from 0.3.1.

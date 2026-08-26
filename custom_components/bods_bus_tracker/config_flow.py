@@ -45,10 +45,14 @@ from .const import (
     CONF_STOP_NAME,
     CONF_STOP_SEARCH,
     CONF_STOP_SELECTION,
+    CONF_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_WALKING_TIME,
     DOMAIN,
     MAX_POLL_INTERVAL,
+    MAX_WALKING_TIME,
     MIN_POLL_INTERVAL,
+    MIN_WALKING_TIME,
     REGIONS,
     REGION_CENTRES,
     STOP_SEARCH_LIMIT,
@@ -488,6 +492,9 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                     ):
                         return self.async_abort(reason="already_configured")
                     self._data[CONF_SERVICES] = selected
+                    self._data[CONF_WALKING_TIME] = int(
+                        user_input.get(CONF_WALKING_TIME, DEFAULT_WALKING_TIME)
+                    )
                     self._data[CONF_POLL_INTERVAL] = int(
                         user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
                     )
@@ -520,6 +527,17 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         )
                     ),
                     vol.Optional(
+                        CONF_WALKING_TIME, default=DEFAULT_WALKING_TIME
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_WALKING_TIME,
+                            max=MAX_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
+                    vol.Optional(
                         CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
@@ -539,7 +557,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Change services and poll interval for one existing stop."""
+        """Change services, walking time and poll interval for one stop."""
         entry = self._get_entry()
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
@@ -580,6 +598,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         subentry,
                         data_updates={
                             CONF_SERVICES: selected,
+                            CONF_WALKING_TIME: int(user_input[CONF_WALKING_TIME]),
                             CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
                         },
                     )
@@ -601,6 +620,22 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             multiple=True,
                             mode=selector.SelectSelectorMode.DROPDOWN,
                             sort=True,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_WALKING_TIME,
+                        default=int(
+                            subentry.data.get(
+                                CONF_WALKING_TIME, DEFAULT_WALKING_TIME
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_WALKING_TIME,
+                            max=MAX_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
                         )
                     ),
                     vol.Required(

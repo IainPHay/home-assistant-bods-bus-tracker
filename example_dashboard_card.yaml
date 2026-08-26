@@ -32,6 +32,14 @@ content: |
   Vehicle {{ next.get('vehicle') }}
   {% endif %}
 
+  {% if next.get('leave_by') %}
+  {% if next.get('leave_now', false) %}
+  🚶 <font color="#d32f2f">**Leave now**</font> · {{ next.get('walking_minutes') }} min walk
+  {% elif next.get('leave_in_minutes') is not none %}
+  🚶 Leave in **{{ next.get('leave_in_minutes') }} min** · leave by **{{ as_timestamp(next.get('leave_by')) | timestamp_custom('%H:%M', true) }}**
+  {% endif %}
+  {% endif %}
+
   ---
 
   | Service | Due |

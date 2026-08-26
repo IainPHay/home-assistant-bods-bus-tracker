@@ -37,6 +37,7 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 - Distinguishes **early**, **on time**, **late**, and **timetable-only** departures.
 - Prevents an early-arriving vehicle at a journey origin from being shown as departing before its published departure time.
 - Configurable live polling interval per stop.
+- Optional per-stop walking time with **Leave by**, **Leave in** and automation-friendly **Leave now** entities.
 - Built-in diagnostics and downloadable Home Assistant diagnostics with API keys redacted.
 - Generic stock Home Assistant Markdown dashboard card included.
 
@@ -102,7 +103,8 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
 4. Choose a BODS timetable region, or **Auto detect** when you already know the exact ATCO/NaPTAN stop code.
 5. Search for the stop by name/code and choose the exact boarding point/direction.
 6. Select the services you want to monitor.
-7. Choose the live polling interval. **30 seconds** is recommended.
+7. Optionally enter the walking time from your usual starting point to this stop. Set it to **0** to disable leave guidance.
+8. Choose the live polling interval. **30 seconds** is recommended.
 
 ### Supported regional timetable feeds
 
@@ -135,7 +137,8 @@ Each stop appears as a separate Home Assistant device.
 Use the stop subentry's **Reconfigure** action to change:
 
 - selected services;
-- polling interval.
+- polling interval;
+- walking time to the stop.
 
 To track a different physical boarding point, add the new stop and remove the old one.
 
@@ -151,6 +154,9 @@ Each configured stop creates a device containing the following entities.
 | **Next bus scheduled** | Published timetable timestamp. |
 | **Next bus delay** | Passenger-facing effective delay when live tracking is available. |
 | **Next bus timing** | `early`, `on_time`, `late`, or `timetable`. |
+| **Leave by** | Timestamp at which to start walking for the next bus when walking time is configured. |
+| **Leave in** | Minutes until the calculated leave-by time. |
+| **Leave now** | Binary sensor that turns on when it is time to start walking; intended for automations. |
 | **Next <service>** | Next departure for each selected service. |
 | **Data status** | `ok`, `degraded`, or `scheduled_only`. |
 | **Last update** | Last successful tracker update. |
