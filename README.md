@@ -20,9 +20,9 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 ![BODS Bus Tracker showing multiple stop subentries](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/multi-stop.png)
 
-### Example departure card
+### Example departure card with walking guidance
 
-![Example Home Assistant departure card](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png)
+![Example Home Assistant departure card with walking guidance](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/feature/walk-to-stop/docs/images/departure-card.png)
 
 ## Highlights
 
