@@ -39,3 +39,7 @@ with the native **Next bus** entity ID belonging to the configured terminus.
 The card includes a compact terminus-state summary, departures board, arrivals board, walking guidance for the next departure, and tracker status.
 
 The existing `example_dashboard_card.yaml` remains the recommended card for ordinary intermediate boarding stops.
+
+## Beta test sequence
+
+For `0.5.0-beta.1`, first confirm an existing intermediate stop remains unchanged in **Departures** mode, then reconfigure a terminus as **Arrivals and departures** and compare the live arrival/departure state with the operator app and direct observation before the feature is merged.
