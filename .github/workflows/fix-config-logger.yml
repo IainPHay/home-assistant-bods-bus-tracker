@@ -1,0 +1,40 @@
+name: Fix config-flow logger typo
+
+on:
+  push:
+    branches:
+      - feature/terminus-arrivals
+    paths:
+      - .github/workflows/fix-config-logger.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/terminus-arrivals
+          fetch-depth: 0
+      - name: Correct all misspelled logger references
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('custom_components/bods_bus_tracker/config_flow.py')
+          text = path.read_text()
+          count = text.count('_LOGGGER')
+          if count == 0:
+              raise SystemExit('No _LOGGGER references found')
+          text = text.replace('_LOGGGER', '_LOGGER')
+          path.write_text(text)
+          print(f'Corrected {count} misspelled logger references')
+          Path('.github/workflows/fix-config-logger.yml').unlink()
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/bods_bus_tracker/config_flow.py .github/workflows/fix-config-logger.yml
+          git commit -m "Fix config-flow exception logging [skip ci]"
+          git push origin HEAD:feature/terminus-arrivals
