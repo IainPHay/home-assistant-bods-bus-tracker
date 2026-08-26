@@ -1,0 +1,44 @@
+name: Prepare v0.4.2 README
+
+on:
+  push:
+    branches:
+      - fix/v0.4.2-assets
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/v0.4.2-assets
+      - name: Update release references and clean broken image
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('README.md')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              'version-0.4.1-blue.svg': 'version-0.4.2-blue.svg',
+              'releases/tag/v0.4.1': 'releases/tag/v0.4.2',
+              'Version 0.4.1': 'Version 0.4.2',
+              'https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/fix/v0.4.2-assets/docs/images/departure-card.png': 'https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'Missing expected README text: {old}')
+              text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+          PY
+          rm -f docs/images/departure-card.jpg
+          git rm .github/workflows/prepare-v0.4.2.yml
+          git add README.md docs/images/departure-card.jpg
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Finalise v0.4.2 release metadata [skip ci]"
+          git push origin HEAD:fix/v0.4.2-assets
