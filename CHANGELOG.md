@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-08-26
+
+- Added optional per-stop walking time configuration.
+- Added Leave by and Leave in sensors derived from the already-calculated next-bus expected time.
+- Added a Leave now binary sensor for Home Assistant automations.
+- Added optional walking guidance to the generic dashboard card.
+- Refined the generic dashboard card to five departures, left-aligned due information, red late values, `+N later departures`, and a one-line tracker footer.
+- Added the approved real Home Assistant walking-guidance screenshot to the README.
+- Walking guidance is post-processing only and does not alter the ETA/matching engine.
+- Real-world tested against live Arriva North East services and cross-checked with the operator app.
+
 ## 0.3.2 — 2026-08-26
 
 - Documentation/packaging-only release; no ETA, matching, configuration or runtime behaviour changes from 0.3.1.

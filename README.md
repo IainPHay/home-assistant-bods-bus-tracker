@@ -1,6 +1,6 @@
 # BODS Bus Tracker for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-0.3.2-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.3.2)
+[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.4.0)
 [![HACS](https://img.shields.io/badge/HACS-custom-orange.svg)](https://www.hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.8%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Validate](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml)
@@ -10,7 +10,7 @@ A native Home Assistant custom integration for English bus services using the UK
 
 It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetables** to provide upcoming buses, live/scheduled status, estimated arrival or departure times, delay information, and per-service sensors directly in Home Assistant.
 
-> **Beta software.** Version 0.3.2 has been tested primarily with Arriva North East services around Morpeth/Newcastle. The integration is designed to be generic, but wider testing across operators and BODS regions is still welcome.
+> **Beta software.** Version 0.4.0 has been tested primarily with Arriva North East services around Morpeth/Newcastle. The integration is designed to be generic, but wider testing across operators and BODS regions is still welcome.
 
 > **Important:** BODS does not require operators to publish stop-by-stop predicted arrival times in SIRI-VM. Where no operator prediction is available, this integration estimates delay from live vehicle position and the published timetable. It should be treated as passenger information, not a guaranteed departure time.
 
@@ -20,9 +20,9 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 ![BODS Bus Tracker showing multiple stop subentries](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/multi-stop.png)
 
-### Example departure card
+### Example departure card with walking guidance
 
-![Example Home Assistant departure card](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png)
+![Example Home Assistant departure card with walking guidance](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png)
 
 ## Highlights
 
@@ -37,6 +37,7 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 - Distinguishes **early**, **on time**, **late**, and **timetable-only** departures.
 - Prevents an early-arriving vehicle at a journey origin from being shown as departing before its published departure time.
 - Configurable live polling interval per stop.
+- Optional per-stop walking time with **Leave by**, **Leave in** and automation-friendly **Leave now** entities.
 - Built-in diagnostics and downloadable Home Assistant diagnostics with API keys redacted.
 - Generic stock Home Assistant Markdown dashboard card included.
 
@@ -102,7 +103,8 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
 4. Choose a BODS timetable region, or **Auto detect** when you already know the exact ATCO/NaPTAN stop code.
 5. Search for the stop by name/code and choose the exact boarding point/direction.
 6. Select the services you want to monitor.
-7. Choose the live polling interval. **30 seconds** is recommended.
+7. Optionally enter the walking time from your usual starting point to this stop. Set it to **0** to disable leave guidance.
+8. Choose the live polling interval. **30 seconds** is recommended.
 
 ### Supported regional timetable feeds
 
@@ -135,7 +137,8 @@ Each stop appears as a separate Home Assistant device.
 Use the stop subentry's **Reconfigure** action to change:
 
 - selected services;
-- polling interval.
+- polling interval;
+- walking time to the stop.
 
 To track a different physical boarding point, add the new stop and remove the old one.
 
@@ -151,6 +154,9 @@ Each configured stop creates a device containing the following entities.
 | **Next bus scheduled** | Published timetable timestamp. |
 | **Next bus delay** | Passenger-facing effective delay when live tracking is available. |
 | **Next bus timing** | `early`, `on_time`, `late`, or `timetable`. |
+| **Leave by** | Timestamp at which to start walking for the next bus when walking time is configured. |
+| **Leave in** | Minutes until the calculated leave-by time. |
+| **Leave now** | Binary sensor that turns on when it is time to start walking; intended for automations. |
 | **Next <service>** | Next departure for each selected service. |
 | **Data status** | `ok`, `degraded`, or `scheduled_only`. |
 | **Last update** | Last successful tracker update. |

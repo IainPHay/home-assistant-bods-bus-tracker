@@ -10,6 +10,10 @@ content: |
   {% set stop = state_attr(entity, 'stop') or {} %}
   {% set updated = state_attr(entity, 'tracker_updated') %}
   {% set health = state_attr(entity, 'data_status') %}
+  {% set walking_minutes = state_attr(entity, 'walking_minutes') %}
+  {% set leave_by = state_attr(entity, 'leave_by') %}
+  {% set leave_in = state_attr(entity, 'leave_in_minutes') %}
+  {% set leave_now = state_attr(entity, 'leave_now') %}
 
   ## 🚌 {{ stop.get('name', 'Bus departures') }}
 
@@ -30,6 +34,14 @@ content: |
 
   {% if next_source == 'live' and next.get('vehicle') %}
   Vehicle {{ next.get('vehicle') }}
+  {% endif %}
+
+  {% if leave_by %}
+  {% if leave_now %}
+  🚶 <font color="#d32f2f">**Leave now**</font>{% if walking_minutes is not none %} · {{ walking_minutes }} min walk{% endif %}
+  {% elif leave_in is not none %}
+  🚶 Leave in **{{ leave_in }} min** · leave by **{{ as_timestamp(leave_by) | timestamp_custom('%H:%M', true) }}**
+  {% endif %}
   {% endif %}
 
   ---

@@ -33,12 +33,15 @@ from .const import (
     CONF_SERVICES,
     CONF_STOP_ATCO,
     CONF_STOP_NAME,
+    CONF_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_WALKING_TIME,
     LOCAL_TIME_ZONE,
     MAX_LIVE_AGE_SECONDS,
     VERSION,
 )
 from .gtfs import async_ensure_gtfs
+from .walking import apply_walking_guidance
 
 _LOGGER = logging.getLogger(__name__)
 LOCAL_TZ = ZoneInfo(LOCAL_TIME_ZONE)
@@ -67,6 +70,9 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.region: str = subentry.data[CONF_REGION]
         self.stop_atco: str = subentry.data[CONF_STOP_ATCO]
         self.stop_name: str = subentry.data[CONF_STOP_NAME]
+        self.walking_time: int = int(
+            subentry.data.get(CONF_WALKING_TIME, DEFAULT_WALKING_TIME)
+        )
         self.services: list[ServiceSpec] = [
             parse_service_key(value) for value in subentry.data[CONF_SERVICES]
         ]
@@ -189,7 +195,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         ):
             raise ConfigEntryAuthFailed("BODS API key was rejected")
 
-        return await self.hass.async_add_executor_job(
+        snapshot = await self.hass.async_add_executor_job(
             make_snapshot,
             self._trips,
             self._gtfs_info,
@@ -202,3 +208,4 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             warnings,
             MAX_LIVE_AGE_SECONDS,
         )
+        return apply_walking_guidance(snapshot, now, self.walking_time)

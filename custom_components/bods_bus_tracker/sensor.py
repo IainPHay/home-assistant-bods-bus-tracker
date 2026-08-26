@@ -166,6 +166,30 @@ class NextBusTimingSensor(BODSBusBaseEntity):
         }
 
 
+class LeaveInSensor(BODSBusBaseEntity):
+    """Minutes remaining until the user should leave for the next bus."""
+
+    _attr_icon = "mdi:walk"
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+
+    def __init__(self, coordinator, entry, subentry) -> None:
+        super().__init__(coordinator, entry, subentry, "leave_in", "Leave in")
+
+    @property
+    def native_value(self):
+        return self.coordinator.data.get("next_bus", {}).get("leave_in_minutes")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data.get("next_bus", {})
+        return {
+            "walking_minutes": data.get("walking_minutes"),
+            "leave_by": data.get("leave_by"),
+            "expected": data.get("expected"),
+            "route": data.get("route"),
+        }
+
+
 class ServiceSensor(BODSBusBaseEntity):
     _attr_icon = "mdi:bus-clock"
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
@@ -264,6 +288,16 @@ def _entities_for_stop(
         ),
         NextBusDelaySensor(coordinator, entry, subentry),
         NextBusTimingSensor(coordinator, entry, subentry),
+        NextBusTimestampSensor(
+            coordinator,
+            entry,
+            subentry,
+            "leave_by",
+            "leave_by",
+            "Leave by",
+            "mdi:walk",
+        ),
+        LeaveInSensor(coordinator, entry, subentry),
     ]
 
     route_counts: dict[str, int] = {}
