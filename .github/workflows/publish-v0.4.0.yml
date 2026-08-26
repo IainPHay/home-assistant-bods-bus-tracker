@@ -1,0 +1,83 @@
+name: Publish v0.4.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-v0.4.0.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove one-off release workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/publish-v0.4.0.yml
+          git commit -m "Remove one-off v0.4.0 release workflow [skip ci]"
+          git push origin HEAD:main
+
+      - name: Publish v0.4.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/release-notes.md <<'EOF'
+          # BODS Bus Tracker v0.4.0
+
+          This release adds optional per-stop walking guidance while preserving the existing live BODS/GTFS ETA and matching engine.
+
+          ## New in v0.4.0
+
+          - Optional **Walking time to stop** setting for each configured bus stop.
+          - New **Leave by** timestamp sensor.
+          - New **Leave in** minutes sensor.
+          - New automation-friendly **Leave now** binary sensor.
+          - Walking guidance follows the current expected bus time, so a live delay moves the leave time with it.
+          - Safe post-departure behaviour prevents **Leave now** remaining latched on after a bus is no longer actionable.
+          - Refined generic Home Assistant Markdown card with five compact departures, left-aligned due information, red late values, `+N later departures`, and a one-line tracker footer.
+          - Dashboard card now displays **Leave in / leave by** or highlights **Leave now** when walking guidance is enabled.
+          - README updated with the approved real Home Assistant walking-guidance screenshot.
+
+          ## Tested with
+
+          v0.4.0 was real-world tested in Home Assistant 2026.8 using Arriva North East services around Morpeth/Newcastle. Live ETA movement was cross-checked against the operator app, including a heavily delayed journey during local roadworks.
+
+          The integration remains designed to be generic across BODS operators and regions, and wider testing is welcome.
+
+          ## Upgrade
+
+          Update through HACS and restart Home Assistant. Existing BODS account and stop subentries are retained.
+
+          To enable walking guidance for an existing stop, use its **Reconfigure** action and enter the normal walking time from your starting point to that stop. Set the value to `0` to disable walking guidance.
+
+          ## Compatibility and validation
+
+          - Home Assistant 2026.8 or newer.
+          - HACS validation: passed.
+          - Hassfest validation: passed.
+          - Existing ETA, live-to-GTFS matching, early/late handling, timetable fallback and multi-stop architecture are unchanged by the walking-time calculation.
+
+          ## Important note about ETA predictions
+
+          Many BODS SIRI-VM feeds provide live vehicle positions without stop-level predicted arrival times. Where an operator prediction is unavailable, BODS Bus Tracker estimates delay by matching the live vehicle to its GTFS timetable trip and comparing live progress with scheduled progress.
+
+          Predictions should therefore be treated as passenger information rather than guaranteed departure times.
+
+          This remains beta software while wider testing continues across operators and BODS regions.
+          EOF
+
+          TARGET="$(git rev-parse HEAD)"
+          gh release create v0.4.0 \
+            --target "$TARGET" \
+            --title "BODS Bus Tracker v0.4.0 — walking-time guidance" \
+            --notes-file /tmp/release-notes.md
