@@ -74,6 +74,11 @@ class NextBusSensor(BODSBusBaseEntity):
         snapshot = self.coordinator.data
         data = dict(snapshot.get("next_bus", {}))
         data["departures"] = snapshot.get("departures", [])
+        data["arrivals"] = snapshot.get("arrivals", [])
+        data["next_departure"] = snapshot.get("next_departure")
+        data["next_arrival"] = snapshot.get("next_arrival")
+        data["stop_view"] = snapshot.get("stop_view")
+        data["terminus"] = snapshot.get("terminus")
         data["tracker_updated"] = snapshot.get("generated_at")
         data["data_status"] = snapshot.get("health")
         data["live_vehicle_count"] = snapshot.get("live_vehicle_count")
