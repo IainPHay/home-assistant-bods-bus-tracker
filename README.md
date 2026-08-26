@@ -1,6 +1,6 @@
 # BODS Bus Tracker for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.4.1)
+[![Version](https://img.shields.io/badge/version-0.4.2-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.4.2)
 [![HACS](https://img.shields.io/badge/HACS-custom-orange.svg)](https://www.hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.8%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Validate](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml)
@@ -10,7 +10,7 @@ A native Home Assistant custom integration for English bus services using the UK
 
 It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetables** to provide upcoming buses, live/scheduled status, estimated arrival or departure times, delay information, and per-service sensors directly in Home Assistant.
 
-> **Beta software.** Version 0.4.1 has been tested primarily with Arriva North East services around Morpeth/Newcastle. The integration is designed to be generic, but wider testing across operators and BODS regions is still welcome.
+> **Beta software.** Version 0.4.2 has been tested primarily with Arriva North East services around Morpeth/Newcastle. The integration is designed to be generic, but wider testing across operators and BODS regions is still welcome.
 
 > **Important:** BODS does not require operators to publish stop-by-stop predicted arrival times in SIRI-VM. Where no operator prediction is available, this integration estimates delay from live vehicle position and the published timetable. It should be treated as passenger information, not a guaranteed departure time.
 
@@ -22,7 +22,7 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 ### Example departure card with walking guidance
 
-![Example Home Assistant departure card with walking guidance](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/fix/v0.4.2-assets/docs/images/departure-card.png)
+![Example Home Assistant departure card with walking guidance](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png)
 
 ## Highlights
 
