@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2 — 2026-08-26
+
+- Replaced the corrupted/truncated bus icon with a complete 256×256 transparent icon with safe padding so the full bus body and wheels remain visible in Home Assistant views.
+- Replaced the packaged integration copy of the icon with the same byte-identical asset.
+- Replaced the broken departure-card image with the approved working walking-guidance screenshot and restored the README to the PNG on `main`.
+- Removed the malformed duplicate JPEG image from the repository.
+- Binary asset uploads were verified by matching local and GitHub Git blob hashes.
+- No ETA, GTFS matching, walking-time, configuration, entity or coordinator behaviour changes from 0.4.1.
+
 ## 0.4.1 — 2026-08-26
 
 - Fixed the stop-device software version so it matches the released integration version instead of showing `0.4.0-beta.1`.
