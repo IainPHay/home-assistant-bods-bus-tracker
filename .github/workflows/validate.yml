@@ -25,3 +25,31 @@ jobs:
       - uses: actions/checkout@v4
       - name: Hassfest validation
         uses: home-assistant/actions/hassfest@master
+
+  validate-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check manifest and runtime versions match
+        shell: bash
+        run: |
+          python - <<'PY'
+          import ast
+          import json
+          from pathlib import Path
+
+          root = Path('custom_components/bods_bus_tracker')
+          manifest_version = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))['version']
+          tree = ast.parse((root / 'const.py').read_text(encoding='utf-8'))
+          runtime_version = None
+          for node in tree.body:
+              if isinstance(node, ast.Assign):
+                  for target in node.targets:
+                      if isinstance(target, ast.Name) and target.id == 'VERSION':
+                          runtime_version = ast.literal_eval(node.value)
+          if runtime_version != manifest_version:
+              raise SystemExit(
+                  f'Version mismatch: manifest={manifest_version!r}, runtime={runtime_version!r}'
+              )
+          print(f'Version sync OK: {manifest_version}')
+          PY

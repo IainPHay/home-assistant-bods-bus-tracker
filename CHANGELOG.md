@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 — 2026-08-26
+
+- Fixed the stop-device software version so it matches the released integration version instead of showing `0.4.0-beta.1`.
+- Added a regression test requiring the runtime version constant and `manifest.json` version to match.
+- Replaced the blank/incorrect departure-card image with the approved working walking-guidance card image.
+- No ETA, matching, walking-time or configuration behaviour changes from 0.4.0.
+
 ## 0.4.0 — 2026-08-26
 
 - Added optional per-stop walking time configuration.
