@@ -45,9 +45,14 @@ from .const import (
     CONF_STOP_NAME,
     CONF_STOP_SEARCH,
     CONF_STOP_SELECTION,
+    CONF_STOP_VIEW,
     CONF_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
+    STOP_VIEW_ARRIVALS,
+    STOP_VIEW_BOTH,
+    STOP_VIEW_DEPARTURES,
     DOMAIN,
     MAX_POLL_INTERVAL,
     MAX_WALKING_TIME,
@@ -144,6 +149,14 @@ def _service_options(discovery: StopDiscovery) -> list[SelectOptionDict]:
     return [
         SelectOptionDict(value=choice.key, label=choice.label)
         for choice in discovery.services
+    ]
+
+
+def _stop_view_options() -> list[SelectOptionDict]:
+    return [
+        SelectOptionDict(value=STOP_VIEW_DEPARTURES, label="Departures"),
+        SelectOptionDict(value=STOP_VIEW_ARRIVALS, label="Arrivals"),
+        SelectOptionDict(value=STOP_VIEW_BOTH, label="Arrivals and departures"),
     ]
 
 
@@ -492,6 +505,9 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                     ):
                         return self.async_abort(reason="already_configured")
                     self._data[CONF_SERVICES] = selected
+                    self._data[CONF_STOP_VIEW] = str(
+                        user_input.get(CONF_STOP_VIEW, DEFAULT_STOP_VIEW)
+                    )
                     self._data[CONF_WALKING_TIME] = int(
                         user_input.get(CONF_WALKING_TIME, DEFAULT_WALKING_TIME)
                     )
@@ -527,6 +543,14 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         )
                     ),
                     vol.Optional(
+                        CONF_STOP_VIEW, default=DEFAULT_STOP_VIEW
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=_stop_view_options(),
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(
                         CONF_WALKING_TIME, default=DEFAULT_WALKING_TIME
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
@@ -557,7 +581,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Change services, walking time and poll interval for one stop."""
+        """Change services, stop view, walking time and poll interval for one stop."""
         entry = self._get_entry()
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
@@ -598,6 +622,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         subentry,
                         data_updates={
                             CONF_SERVICES: selected,
+                            CONF_STOP_VIEW: str(user_input[CONF_STOP_VIEW]),
                             CONF_WALKING_TIME: int(user_input[CONF_WALKING_TIME]),
                             CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
                         },
@@ -620,6 +645,17 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             multiple=True,
                             mode=selector.SelectSelectorMode.DROPDOWN,
                             sort=True,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_STOP_VIEW,
+                        default=str(
+                            subentry.data.get(CONF_STOP_VIEW, DEFAULT_STOP_VIEW)
+                        ),
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=_stop_view_options(),
+                            mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
                     vol.Required(
