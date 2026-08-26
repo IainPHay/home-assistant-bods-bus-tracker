@@ -2,7 +2,7 @@
 
 ## 0.4.2 — 2026-08-26
 
-- Replaced the corrupted/truncated bus icon with a complete 256×256 transparent icon with safe padding so the full bus body and wheels remain visible in Home Assistant views.
+- Replaced the corrupted/truncated bus icon with a complete 256×256 transparent icon with safe padding so the full bus body and wheels remain visible across Home Assistant views, including Repairs.
 - Replaced the packaged integration copy of the icon with the same byte-identical asset.
 - Replaced the broken departure-card image with the approved working walking-guidance screenshot and restored the README to the PNG on `main`.
 - Removed the malformed duplicate JPEG image from the repository.
