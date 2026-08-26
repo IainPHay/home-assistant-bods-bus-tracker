@@ -1,0 +1,1 @@
+Image binary pending tool upload support; do not merge until departure-card.png is replaced with approved walking-guidance screenshot.
