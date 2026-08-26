@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from custom_components.bods_bus_tracker.api import LiveVehicle, ServiceSpec, StopTime, Trip
@@ -69,7 +69,13 @@ def _outbound_trip() -> Trip:
     )
 
 
-def _vehicle_for(trip: Trip, vehicle: str, recorded: datetime, lat: float, lon: float) -> LiveVehicle:
+def _vehicle_for(
+    trip: Trip,
+    vehicle: str,
+    recorded: datetime,
+    lat: float,
+    lon: float,
+) -> LiveVehicle:
     service_date = recorded.date()
     midnight = datetime.combine(service_date, datetime.min.time(), tzinfo=TZ)
     return LiveVehicle(
@@ -79,8 +85,8 @@ def _vehicle_for(trip: Trip, vehicle: str, recorded: datetime, lat: float, lon: 
         dated_ref=trip.trip_id,
         origin_ref=trip.origin.stop_id,
         destination_ref=trip.destination.stop_id,
-        origin_dt=midnight.replace() + __import__("datetime").timedelta(seconds=trip.origin.departure_s),
-        destination_dt=midnight.replace() + __import__("datetime").timedelta(seconds=trip.destination.arrival_s),
+        origin_dt=midnight + timedelta(seconds=trip.origin.departure_s),
+        destination_dt=midnight + timedelta(seconds=trip.destination.arrival_s),
         recorded_dt=recorded,
         lat=lat,
         lon=lon,
@@ -113,7 +119,7 @@ def test_intermediate_departures_preserves_existing_boarding_view() -> None:
 
 
 def test_terminus_both_separates_arrival_from_proven_outbound_at_stand() -> None:
-    now = datetime(2026, 8, 26, 11, 58, 30, tzinfo=TZ)
+    now = datetime(2026, 8, 26, 11, 59, 10, tzinfo=TZ)
     inbound = _inbound_trip()
     outbound = _outbound_trip()
     incoming_vehicle = _vehicle_for(
@@ -164,7 +170,7 @@ def test_terminus_both_separates_arrival_from_proven_outbound_at_stand() -> None
 
 
 def test_arrivals_mode_selects_incoming_journey() -> None:
-    now = datetime(2026, 8, 26, 11, 58, 30, tzinfo=TZ)
+    now = datetime(2026, 8, 26, 11, 59, 10, tzinfo=TZ)
     inbound = _inbound_trip()
     outbound = _outbound_trip()
     result = apply_stop_view(
