@@ -1,0 +1,51 @@
+name: Prepare v0.4.1 documentation
+
+on:
+  push:
+    branches:
+      - fix/v0.4.1-version-sync
+    paths:
+      - .github/workflows/prepare-v0.4.1.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/v0.4.1-version-sync
+      - name: Update README and changelog
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          text = text.replace(
+              '[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.4.0)',
+              '[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.4.1)',
+          )
+          text = text.replace('**Beta software.** Version 0.4.0 has been tested', '**Beta software.** Version 0.4.1 has been tested')
+          text = text.replace('/main/docs/images/departure-card.png)', '/main/docs/images/departure-card.jpg)')
+          readme.write_text(text, encoding='utf-8')
+
+          changelog = Path('CHANGELOG.md')
+          c = changelog.read_text(encoding='utf-8')
+          entry = '''## 0.4.1 — 2026-08-26\n\n- Fixed the stop-device software version so it matches the released integration version instead of showing `0.4.0-beta.1`.\n- Added a regression test requiring the runtime version constant and `manifest.json` version to match.\n- Replaced the blank/incorrect departure-card image with the approved working walking-guidance card image.\n- No ETA, matching, walking-time or configuration behaviour changes from 0.4.0.\n\n'''
+          if '## 0.4.1 — 2026-08-26' not in c:
+              c = c.replace('# Changelog\n\n', '# Changelog\n\n' + entry, 1)
+          changelog.write_text(c, encoding='utf-8')
+          PY
+      - name: Commit prepared patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/prepare-v0.4.1.yml
+          git add README.md CHANGELOG.md
+          git commit -m "Prepare v0.4.1 documentation [skip ci]"
+          git push origin HEAD:fix/v0.4.1-version-sync
