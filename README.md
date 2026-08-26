@@ -26,7 +26,6 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 ## Highlights
 
-- Native Home Assistant integration — **no MQTT broker or Raspberry Pi sidecar required**.
 - Enter your **BODS API key once** and add multiple bus stops beneath the same account.
 - Each monitored stop becomes its own Home Assistant device.
 - Search stops by **name, ATCO code, or NaPTAN/SMS code** within a selected BODS region.
