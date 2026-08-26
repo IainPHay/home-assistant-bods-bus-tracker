@@ -1,10 +1,10 @@
 # BODS Bus Tracker for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.1-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.3.1)
 [![HACS](https://img.shields.io/badge/HACS-custom-orange.svg)](https://www.hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.8%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Validate](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/blob/main/LICENSE)
 
 A native Home Assistant custom integration for English bus services using the UK Department for Transport **Bus Open Data Service (BODS)**.
 
@@ -18,11 +18,11 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 ### Multiple stops under one BODS account
 
-![BODS Bus Tracker showing multiple stop subentries](docs/images/multi-stop.png)
+![BODS Bus Tracker showing multiple stop subentries](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/multi-stop.png)
 
 ### Example departure card
 
-![Example Home Assistant departure card](docs/images/departure-card.png)
+![Example Home Assistant departure card](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png)
 
 ## Highlights
 
@@ -339,4 +339,4 @@ This project is an independent community integration and is **not affiliated wit
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Released under the [MIT License](https://github.com/IainPHay/home-assistant-bods-bus-tracker/blob/main/LICENSE).
