@@ -272,16 +272,6 @@ Check the **Live vehicles**, **GTFS matches**, and **Data status** diagnostic en
 
 The integration supports Home Assistant's reauthentication flow. Updating the shared API key applies to all configured stops.
 
-## Upgrading from 0.1 / 0.2
-
-Version 0.3 introduced a shared account + multiple stop-subentry architecture.
-
-Do **not** delete the existing integration before upgrading. Existing one-stop configurations are migrated automatically so that:
-
-- the BODS API key becomes the shared account credential;
-- the existing stop becomes the first bus-stop subentry;
-- the existing device is moved to the subentry;
-- legacy entity unique IDs are retained where possible to preserve entity IDs/history.
 
 ## Current beta limitations
 
@@ -293,8 +283,6 @@ Do **not** delete the existing integration before upgrading. Existing one-stop c
 - This integration estimates ETAs from public data and cannot guarantee that a bus will operate or arrive/depart at the predicted time.
 
 ## Roadmap
-
-Development is intentionally paused at **0.3.1** while this version receives real-world testing.
 
 Potential future work includes:
 
@@ -317,17 +305,6 @@ Please open a GitHub issue and include:
 - downloaded Home Assistant integration diagnostics, where relevant.
 
 **Do not post your BODS API key.**
-
-## HACS validation
-
-The repository includes GitHub Actions for:
-
-- official HACS repository validation;
-- Home Assistant Hassfest validation.
-
-The repository also carries the HACS-relevant GitHub topics, including `home-assistant`, `hacs`, and `hacs-integration`.
-
-HACS requires one integration under `custom_components`, the required manifest metadata, and a root `brand/icon.png`; this repository is structured accordingly.
 
 ## Data sources and attribution
 
