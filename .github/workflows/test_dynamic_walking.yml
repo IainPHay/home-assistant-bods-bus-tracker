@@ -1,0 +1,76 @@
+name: Dynamic walking model test
+
+on:
+  push:
+    branches:
+      - feature/dynamic-walking-time
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  test-dynamic-walking:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile modified Python files
+        run: |
+          python -m py_compile \
+            custom_components/bods_bus_tracker/const.py \
+            custom_components/bods_bus_tracker/walking.py \
+            custom_components/bods_bus_tracker/coordinator.py \
+            custom_components/bods_bus_tracker/config_flow.py
+      - name: Validate translation JSON
+        run: python -m json.tool custom_components/bods_bus_tracker/translations/en.json >/dev/null
+      - name: Run pure walking model checks
+        run: |
+          python - <<'PY'
+          import importlib.util
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          path = Path('custom_components/bods_bus_tracker/walking.py')
+          spec = importlib.util.spec_from_file_location('bods_walking_model', path)
+          module = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(module)
+
+          normalise = module.normalise_dynamic_walking_minutes
+          apply = module.apply_walking_guidance
+
+          assert normalise('7.5', 'min', 120) == 7.5
+          assert normalise(450, 's', 120) == 7.5
+          assert normalise(0.125, 'h', 120) == 7.5
+          assert normalise(-1, 'min', 120) is None
+          assert normalise('unknown', 'min', 120) is None
+          assert normalise(121, 'min', 120) is None
+          assert normalise(10, None, 120) is None
+
+          now = datetime(2026, 8, 27, 10, 0, tzinfo=ZoneInfo('Europe/London'))
+          snapshot = {
+              'next_bus': {
+                  'available': True,
+                  'route': 'T1',
+                  'expected': '2026-08-27T10:30:00+01:00',
+              }
+          }
+          data = apply(
+              snapshot,
+              now,
+              8,
+              walking_mode='dynamic',
+              walking_time_entity='sensor.walk_to_stop',
+              walking_dynamic_minutes=7.4,
+              walking_fallback=False,
+              walking_source_status='ok',
+          )['next_bus']
+          assert data['walking_minutes'] == 8
+          assert data['leave_by'] == '2026-08-27T10:22:00+01:00'
+          assert data['leave_in_minutes'] == 22
+          assert data['leave_now'] is False
+          assert data['walking_mode'] == 'dynamic'
+          assert data['walking_dynamic_minutes'] == 7.4
+          assert data['walking_source_status'] == 'ok'
+          print('Dynamic walking model checks passed')
+          PY
