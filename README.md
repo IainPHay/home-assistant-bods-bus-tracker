@@ -1,6 +1,6 @@
 # BODS Bus Tracker for Home Assistant
 
-[![Version](https://img.shields.io/badge/version-0.4.2-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.4.2)
+[![Version](https://img.shields.io/badge/version-0.5.0-blue.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/tag/v0.5.0)
 [![HACS](https://img.shields.io/badge/HACS-custom-orange.svg)](https://www.hacs.xyz/)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.8%2B-41BDF5.svg)](https://www.home-assistant.io/)
 [![Validate](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml/badge.svg)](https://github.com/IainPHay/home-assistant-bods-bus-tracker/actions/workflows/validate.yml)
@@ -8,9 +8,9 @@
 
 A native Home Assistant custom integration for English bus services using the UK Department for Transport **Bus Open Data Service (BODS)**.
 
-It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetables** to provide upcoming buses, live/scheduled status, estimated arrival or departure times, delay information, and per-service sensors directly in Home Assistant.
+It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetables** to provide upcoming buses, live/scheduled status, estimated arrival or departure times, delay information, walking guidance, and per-service sensors directly in Home Assistant.
 
-> **Beta software.** Version 0.4.2 has been tested primarily with Arriva North East services around Morpeth/Newcastle. The integration is designed to be generic, but wider testing across operators and BODS regions is still welcome.
+> **Pre-1.0 software.** Version 0.5.0 has been tested primarily with Arriva North East services around Morpeth and Newcastle. The integration is designed to be generic, but wider testing across operators and BODS regions is still welcome.
 
 > **Important:** BODS does not require operators to publish stop-by-stop predicted arrival times in SIRI-VM. Where no operator prediction is available, this integration estimates delay from live vehicle position and the published timetable. It should be treated as passenger information, not a guaranteed departure time.
 
@@ -20,9 +20,15 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 ![BODS Bus Tracker showing multiple stop subentries](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/multi-stop.png)
 
-### Example departure card with walking guidance
+### Ordinary departure card with walking guidance
 
 ![Example Home Assistant departure card with walking guidance](https://raw.githubusercontent.com/IainPHay/home-assistant-bods-bus-tracker/main/docs/images/departure-card.png)
+
+### Terminus arrivals and departures card
+
+This real Home Assistant example from Haymarket Bus Station shows simultaneous **At stand** and **Approaching** states, separate arrivals/departures, and the new `previous_stop` context using **Haymarket Barras Bridge**.
+
+![Example Home Assistant terminus arrivals and departures card](https://github.com/user-attachments/assets/6884cf1b-d2ec-4d6c-9c12-7be9fae3f2ef)
 
 ## Highlights
 
@@ -34,12 +40,16 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 - Select only the services you want to monitor.
 - Live vehicle positions are matched to the day's GTFS trips.
 - Falls back cleanly to the published timetable when a live match is not yet available.
-- Distinguishes **early**, **on time**, **late**, and **timetable-only** departures.
+- Distinguishes **early**, **on time**, **late**, and **timetable-only** predictions.
 - Prevents an early-arriving vehicle at a journey origin from being shown as departing before its published departure time.
+- Per-stop **Departures**, **Arrivals**, or **Arrivals and departures** views.
+- Terminus-aware live states including **At stand**, **Arrived**, and **Approaching** when BODS/GTFS data justify them.
+- Arrival rows expose the previous GTFS stop for clearer local context at termini.
 - Configurable live polling interval per stop.
 - Optional per-stop walking time with **Leave by**, **Leave in** and automation-friendly **Leave now** entities.
+- Rich live dashboard attributes are kept out of Recorder history to avoid oversized-attribute warnings at busy stops.
 - Built-in diagnostics and downloadable Home Assistant diagnostics with API keys redacted.
-- Generic stock Home Assistant Markdown dashboard card included.
+- Two generic stock Home Assistant Markdown dashboard cards are included: one for ordinary departures and one for termini.
 
 ## Requirements
 
@@ -103,8 +113,12 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
 4. Choose a BODS timetable region, or **Auto detect** when you already know the exact ATCO/NaPTAN stop code.
 5. Search for the stop by name/code and choose the exact boarding point/direction.
 6. Select the services you want to monitor.
-7. Optionally enter the walking time from your usual starting point to this stop. Set it to **0** to disable leave guidance.
-8. Choose the live polling interval. **30 seconds** is recommended.
+7. Choose the **Stop view**:
+   - **Departures** for an ordinary boarding stop;
+   - **Arrivals** for an arrival-only view;
+   - **Arrivals and departures** for a terminus or bus station where the distinction is useful.
+8. Optionally enter the walking time from your usual starting point to this stop. Set it to **0** to disable leave guidance.
+9. Choose the live polling interval. **30 seconds** is recommended.
 
 ### Supported regional timetable feeds
 
@@ -128,6 +142,8 @@ The BODS API key is shared, so it is not requested again. Additional stops can:
 
 - be in different BODS regions;
 - monitor different operators/routes;
+- use different stop views;
+- use different walking times;
 - use different polling intervals.
 
 Each stop appears as a separate Home Assistant device.
@@ -137,10 +153,37 @@ Each stop appears as a separate Home Assistant device.
 Use the stop subentry's **Reconfigure** action to change:
 
 - selected services;
+- stop view;
 - polling interval;
 - walking time to the stop.
 
 To track a different physical boarding point, add the new stop and remove the old one.
+
+## Stop views
+
+### Departures
+
+**Departures** is the default and is recommended for ordinary intermediate boarding stops. It preserves the established BODS Bus Tracker behaviour: `Next bus`, per-service sensors, walking guidance and the generic departure card all refer to boardable departures.
+
+### Arrivals
+
+**Arrivals** selects journeys reaching the monitored stop. Because there is no boardable departure selected, walking guidance is disabled in this mode.
+
+### Arrivals and departures
+
+**Arrivals and departures** is intended for termini and bus stations. It exposes separate ordered `arrivals` and `departures` lists while `Next bus`, `Leave by`, `Leave in` and `Leave now` remain tied to the next boardable departure.
+
+When live data justify it, the terminus data can include:
+
+- **At stand** — a live vehicle is independently matched to an outbound journey originating at the monitored stop and is physically at the stop.
+- **Arrived** — a live inbound destination journey is physically at the terminus.
+- **Approaching** — a live inbound terminating journey is within five minutes of the stop.
+
+The integration deliberately does **not** assume that an incoming vehicle will form a later outbound journey. A vehicle is only shown as **At stand** after the outbound origin journey itself has been matched.
+
+For arrival context, `previous_stop` is derived from the ordered GTFS stop list. This avoids relying on ambiguous generic journey origins such as `Bus Station` and can instead show a familiar local stop such as **Haymarket Barras Bridge**.
+
+See [`TERMINUS_CARD.md`](TERMINUS_CARD.md) for more detail.
 
 ## Entities
 
@@ -148,16 +191,16 @@ Each configured stop creates a device containing the following entities.
 
 | Entity | Purpose |
 | --- | --- |
-| **Next bus** | Route/service of the next expected departure and the main departure attributes. |
-| **Next bus minutes** | Whole minutes until the expected departure/arrival. |
+| **Next bus** | Main selected journey. In **Departures** / **Arrivals and departures** it remains the next boardable departure; in **Arrivals** it represents the next arrival. |
+| **Next bus minutes** | Whole minutes until the selected expected arrival/departure. |
 | **Next bus expected** | Timestamp of the current expected arrival/departure. |
 | **Next bus scheduled** | Published timetable timestamp. |
 | **Next bus delay** | Passenger-facing effective delay when live tracking is available. |
 | **Next bus timing** | `early`, `on_time`, `late`, or `timetable`. |
-| **Leave by** | Timestamp at which to start walking for the next bus when walking time is configured. |
+| **Leave by** | Timestamp at which to start walking for the next boardable bus when walking time is configured. |
 | **Leave in** | Minutes until the calculated leave-by time. |
 | **Leave now** | Binary sensor that turns on when it is time to start walking; intended for automations. |
-| **Next <service>** | Next departure for each selected service. |
+| **Next <service>** | Next boardable departure for each selected service. |
 | **Data status** | `ok`, `degraded`, or `scheduled_only`. |
 | **Last update** | Last successful tracker update. |
 | **Live vehicles** | Number of relevant live vehicle records received. |
@@ -165,7 +208,7 @@ Each configured stop creates a device containing the following entities.
 
 ### Useful attributes
 
-The **Next bus** entity includes an ordered `departures` list, so a dashboard card does not need to know the route names in advance.
+The **Next bus** entity exposes ordered journey data for live dashboards and automations.
 
 Typical departure attributes include:
 
@@ -184,9 +227,31 @@ stop_role: intermediate
 prediction_clamped: false
 ```
 
+Typical arrival data can also include:
+
+```yaml
+event_type: arrival
+stop_role: destination
+origin: Bus Station
+previous_stop: Haymarket Barras Bridge
+at_stop: false
+```
+
+For a stop in **Arrivals and departures** mode, the **Next bus** entity can expose:
+
+- `departures` — ordered boardable departures;
+- `arrivals` — ordered terminating arrivals;
+- `next_departure`;
+- `next_arrival`;
+- `terminus.at_stand_departures`;
+- `terminus.arrived_vehicles`;
+- `terminus.approaching_arrivals`.
+
+The large rolling journey lists are intentionally marked as **unrecorded**. They remain available live to cards, templates and automations but are not written into Recorder history, avoiding Home Assistant's state-attribute size limit at busy stops.
+
 `stop_role` can be `origin`, `intermediate`, or `destination`.
 
-## Early departures and terminuses
+## Early departures and journey origins
 
 An important distinction is made between **vehicle progress** and a **passenger departure prediction**.
 
@@ -225,18 +290,35 @@ Malformed, stale, or ambiguous live records are ignored instead of replacing tru
 | --- | --- |
 | `ok` | All selected live feeds responded successfully. |
 | `degraded` | One or more live requests failed while others succeeded. |
-| `scheduled_only` | All live requests failed; timetable departures remain available. |
+| `scheduled_only` | All live requests failed; timetable journeys remain available. |
 
-A service can show **Timetable** while overall data status is `ok`. This simply means BODS is healthy but that particular approaching journey has not yet been matched to a live vehicle.
+A service can show **Timetable** while overall data status is `ok`. This simply means BODS is healthy but that particular journey has not yet been matched to a live vehicle.
 
-## Dashboard card
+## Generic dashboard card examples
 
-A generic stock Home Assistant Markdown card is included in:
+Two complete generic stock Home Assistant Markdown card examples are included. Neither requires a custom frontend card.
 
-- [`example_dashboard_card.yaml`](example_dashboard_card.yaml)
-- [`DASHBOARD_CARD.md`](DASHBOARD_CARD.md)
+| Use case | Generic YAML | Documentation |
+| --- | --- | --- |
+| Ordinary boarding stop / departure board | [`example_dashboard_card.yaml`](example_dashboard_card.yaml) | [`DASHBOARD_CARD.md`](DASHBOARD_CARD.md) |
+| Terminus / bus station with arrivals and departures | [`example_terminus_card.yaml`](example_terminus_card.yaml) | [`TERMINUS_CARD.md`](TERMINUS_CARD.md) |
 
-It reads the ordered `departures` attribute from a single **Next bus** entity, so it can be reused for any configured stop without hard-coding route numbers.
+Both examples use the same placeholder:
+
+```yaml
+entity_id:
+  - sensor.YOUR_NEXT_BUS_ENTITY
+```
+
+and inside the template:
+
+```jinja
+{% set entity = 'sensor.YOUR_NEXT_BUS_ENTITY' %}
+```
+
+Replace **both** occurrences with the native **Next bus** entity ID for the stop you want to display.
+
+The full generic code is kept in the two YAML files above so it can be copied directly into a Home Assistant **Markdown** card without hard-coded route numbers or stop names.
 
 ## Caching and network behaviour
 
@@ -277,14 +359,14 @@ Check the **Live vehicles**, **GTFS matches**, and **Data status** diagnostic en
 
 The integration supports Home Assistant's reauthentication flow. Updating the shared API key applies to all configured stops.
 
-
-## Current beta limitations
+## Current limitations
 
 - Tested most extensively with Arriva North East X14/X15/X16/X18 services in Northumberland/Tyneside.
 - Name search is regional GTFS-based; postcode/geocoder search is not yet included.
 - Exact-code automatic region detection may need to check multiple regional GTFS feeds.
 - Incomplete operator SIRI aimed-time records are currently skipped.
 - Historical learning and traffic/roadworks/Waze enrichment are intentionally not yet implemented.
+- The integration cannot infer a vehicle's next duty unless BODS/GTFS independently identifies that outbound journey.
 - This integration estimates ETAs from public data and cannot guarantee that a bus will operate or arrive/depart at the predicted time.
 
 ## Roadmap
@@ -295,7 +377,8 @@ Potential future work includes:
 - locality/postcode stop search;
 - historical route-segment travel-time learning;
 - optional traffic/roadworks anomaly flags;
-- wider operator/region regression tests.
+- wider operator/region regression tests;
+- an optional **dynamic walking time** calculated from a Home Assistant `person` / `device_tracker` location and/or Home Assistant zones, alongside the existing static per-stop walking time.
 
 ## Reporting problems
 
