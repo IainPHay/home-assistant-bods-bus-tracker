@@ -7,8 +7,45 @@ from datetime import datetime, timedelta
 from typing import Any
 
 
+def normalise_dynamic_walking_minutes(
+    value: object,
+    unit: str | None,
+    maximum_minutes: int,
+) -> float | None:
+    """Normalise a Home Assistant duration-like sensor state to minutes."""
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    if not math.isfinite(numeric) or numeric < 0:
+        return None
+
+    unit_key = (unit or "").strip().casefold()
+    if unit_key in {"min", "minute", "minutes"}:
+        minutes = numeric
+    elif unit_key in {"s", "sec", "second", "seconds"}:
+        minutes = numeric / 60
+    elif unit_key in {"h", "hr", "hour", "hours"}:
+        minutes = numeric * 60
+    else:
+        return None
+
+    if minutes > maximum_minutes:
+        return None
+    return minutes
+
+
 def apply_walking_guidance(
-    snapshot: dict[str, Any], now: datetime, walking_minutes: int
+    snapshot: dict[str, Any],
+    now: datetime,
+    walking_minutes: int,
+    *,
+    walking_mode: str = "static",
+    walking_time_entity: str | None = None,
+    walking_dynamic_minutes: float | None = None,
+    walking_fallback: bool = False,
+    walking_source_status: str = "ok",
 ) -> dict[str, Any]:
     """Add leave-by guidance without changing the underlying ETA."""
     next_bus = snapshot.get("next_bus")
@@ -17,6 +54,11 @@ def apply_walking_guidance(
 
     walking_minutes = max(0, int(walking_minutes))
     next_bus["walking_minutes"] = walking_minutes
+    next_bus["walking_mode"] = walking_mode
+    next_bus["walking_time_entity"] = walking_time_entity
+    next_bus["walking_dynamic_minutes"] = walking_dynamic_minutes
+    next_bus["walking_fallback"] = walking_fallback
+    next_bus["walking_source_status"] = walking_source_status
     next_bus["leave_by"] = None
     next_bus["leave_in_minutes"] = None
     next_bus["leave_now"] = False
