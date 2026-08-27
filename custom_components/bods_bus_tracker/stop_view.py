@@ -90,20 +90,27 @@ def _enrich_row(
 
     if trip is None:
         enriched["origin"] = None
+        enriched["previous_stop"] = None
         enriched["distance_to_stop_m"] = None
         enriched["at_stop"] = False
         return enriched
 
     enriched["origin"] = trip.origin.name
     target = trip.target(target_stop)
+    if target is None:
+        enriched["previous_stop"] = None
+        enriched["distance_to_stop_m"] = None
+        enriched["at_stop"] = False
+        return enriched
+
+    target_index = trip.stops.index(target)
+    enriched["previous_stop"] = (
+        trip.stops[target_index - 1].name if target_index > 0 else None
+    )
+
     latitude = enriched.get("latitude")
     longitude = enriched.get("longitude")
-    if (
-        target is None
-        or latitude is None
-        or longitude is None
-        or not enriched.get("realtime")
-    ):
+    if latitude is None or longitude is None or not enriched.get("realtime"):
         enriched["distance_to_stop_m"] = None
         enriched["at_stop"] = False
         return enriched
