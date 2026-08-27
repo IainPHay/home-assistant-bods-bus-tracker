@@ -1,16 +1,21 @@
-# Generic dashboard card
+# Generic departure dashboard card
 
-BODS Bus Tracker exposes an ordered `departures` list on each configured stop's **Next bus** entity. The included Markdown card uses that one entity to build a compact departure board for any stop configured in the integration.
+BODS Bus Tracker exposes an ordered `departures` list on each configured stop's **Next bus** entity. The included Markdown card uses that one entity to build a compact departure board for any ordinary boarding stop configured in the integration.
 
 The repository example is deliberately generic: it contains no fixed ATCO code, route number or stop name. No HACS dashboard card or other frontend dependency is required.
 
-## Install the card
+For a bus station or route terminus configured as **Arrivals and departures**, use the separate terminus card instead:
+
+- [`example_terminus_card.yaml`](example_terminus_card.yaml)
+- [`TERMINUS_CARD.md`](TERMINUS_CARD.md)
+
+## Install the departure card
 
 1. In Home Assistant, open **Settings → Devices & services → BODS Bus Tracker**.
 2. Open the bus stop you want to display.
 3. Find that stop's **Next bus** entity and copy its entity ID.
 4. Open the dashboard you want to edit and add a **Markdown** card.
-5. Copy the contents of [`example_dashboard_card.yaml`](example_dashboard_card.yaml).
+5. Copy the full generic YAML from [`example_dashboard_card.yaml`](example_dashboard_card.yaml).
 6. Replace **both** occurrences of:
 
    `sensor.YOUR_NEXT_BUS_ENTITY`
@@ -24,7 +29,7 @@ The exact entity ID is created by Home Assistant from the configured stop and ma
 - Stop name from the configured BODS stop.
 - The next service prominently, including minutes due.
 - Live versus timetable-only status and destination when available.
-- Expected departure/arrival time.
+- Expected departure time.
 - Friendly timing such as `3.2 min early`, `On time`, or `19.9 min late`.
 - Late-running values highlighted in red for quick recognition.
 - `held to timetable` when an early vehicle is at the origin of its next journey.
@@ -46,8 +51,10 @@ to another value, but the five-row layout is the recommended default.
 
 ## Compatibility
 
-The example uses safe dictionary access (`row.get(...)`) for optional departure attributes so missing live fields do not break the card. It reads the route, stop, destination and timing data from the selected **Next bus** entity rather than hard-coding any particular service or boarding point.
+The example uses safe dictionary access (`row.get(...)`) for optional departure attributes so missing live fields do not break the card. It reads route, stop, destination and timing data from the selected **Next bus** entity rather than hard-coding any particular service or boarding point.
 
-## Example
+The large rolling departure data remain available live to this card while being excluded from Home Assistant Recorder history to avoid oversized-attribute warnings at busy stops.
+
+## Real Home Assistant example
 
 ![Example BODS Bus Tracker departure card](docs/images/departure-card.png)
