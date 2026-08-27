@@ -33,14 +33,18 @@ from .const import (
     CONF_SERVICES,
     CONF_STOP_ATCO,
     CONF_STOP_NAME,
+    CONF_STOP_VIEW,
     CONF_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
     LOCAL_TIME_ZONE,
     MAX_LIVE_AGE_SECONDS,
+    STOP_VIEW_ARRIVALS,
     VERSION,
 )
 from .gtfs import async_ensure_gtfs
+from .stop_view import apply_stop_view
 from .walking import apply_walking_guidance
 
 _LOGGER = logging.getLogger(__name__)
@@ -70,6 +74,9 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.region: str = subentry.data[CONF_REGION]
         self.stop_atco: str = subentry.data[CONF_STOP_ATCO]
         self.stop_name: str = subentry.data[CONF_STOP_NAME]
+        self.stop_view: str = str(
+            subentry.data.get(CONF_STOP_VIEW, DEFAULT_STOP_VIEW)
+        )
         self.walking_time: int = int(
             subentry.data.get(CONF_WALKING_TIME, DEFAULT_WALKING_TIME)
         )
@@ -208,4 +215,20 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             warnings,
             MAX_LIVE_AGE_SECONDS,
         )
+        snapshot = await self.hass.async_add_executor_job(
+            apply_stop_view,
+            snapshot,
+            self._trips,
+            vehicles,
+            now,
+            self.stop_atco,
+            self.services,
+            self.stop_view,
+            MAX_LIVE_AGE_SECONDS,
+        )
+
+        # Walking guidance is intentionally tied to a boardable departure. In arrivals
+        # mode it is disabled; in both mode Next bus remains the next departure.
+        if self.stop_view == STOP_VIEW_ARRIVALS:
+            return snapshot
         return apply_walking_guidance(snapshot, now, self.walking_time)

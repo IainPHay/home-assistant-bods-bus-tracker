@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "bods_bus_tracker"
-VERSION = "0.4.2"
+VERSION = "0.5.0-beta.2"
 PLATFORMS = ["sensor", "binary_sensor"]
 SUBENTRY_TYPE_STOP = "stop"
 
@@ -17,6 +17,13 @@ CONF_SERVICES = "services"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_LEGACY_ENTITY_IDS = "legacy_entity_ids"
 CONF_WALKING_TIME = "walking_time"
+CONF_STOP_VIEW = "stop_view"
+
+STOP_VIEW_DEPARTURES = "departures"
+STOP_VIEW_ARRIVALS = "arrivals"
+STOP_VIEW_BOTH = "both"
+STOP_VIEWS = (STOP_VIEW_DEPARTURES, STOP_VIEW_ARRIVALS, STOP_VIEW_BOTH)
+DEFAULT_STOP_VIEW = STOP_VIEW_DEPARTURES
 
 AUTO_REGION = "auto"
 DEFAULT_POLL_INTERVAL = 30
@@ -28,6 +35,7 @@ MAX_WALKING_TIME = 120
 DEFAULT_GTFS_REFRESH_HOURS = 24
 MAX_LIVE_AGE_SECONDS = 180
 STOP_SEARCH_LIMIT = 25
+AT_STOP_DISTANCE_METRES = 120
 
 BODS_VEHICLE_URL = "https://data.bus-data.dft.gov.uk/api/v1/datafeed/"
 GTFS_URL_TEMPLATE = (

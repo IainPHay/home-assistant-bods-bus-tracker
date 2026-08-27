@@ -62,24 +62,28 @@
           "description": "{stop_name} ({stop_atco}) was found in {region}. Select the services to include at this stop.",
           "data": {
             "services": "Services",
+            "stop_view": "Stop view",
             "poll_interval": "Live update interval",
             "walking_time": "Walking time to stop"
           },
           "data_description": {
             "services": "Available route/operator combinations discovered from the regional GTFS timetable. Destination/headsigns are shown where BODS supplies them.",
+            "stop_view": "Departures preserves the existing boarding-time behaviour at intermediate stops. Arrivals shows buses reaching the stop. Arrivals and departures is intended for termini; Next bus and Leave now remain tied to the next boardable departure.",
             "poll_interval": "How often to poll BODS vehicle locations for this stop. 30 seconds is recommended.",
             "walking_time": "Minutes needed to walk from your usual starting point to this boarding stop. Set to 0 to disable Leave by/Leave now guidance. Include any personal margin you want."
           }
         },
         "reconfigure": {
           "title": "Configure bus stop",
-          "description": "Change the services, walking time and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
+          "description": "Change the services, stop view, walking time and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
           "data": {
             "services": "Services",
+            "stop_view": "Stop view",
             "poll_interval": "Live update interval",
             "walking_time": "Walking time to stop"
           },
           "data_description": {
+            "stop_view": "Departures is recommended for ordinary intermediate boarding stops. Use Arrivals or Arrivals and departures where the distinction is useful, especially at a terminus.",
             "poll_interval": "Each stop can use its own live update interval. 30 seconds is recommended.",
             "walking_time": "Minutes needed to walk from your usual starting point to this boarding stop. Set to 0 to disable Leave by/Leave now guidance."
           }

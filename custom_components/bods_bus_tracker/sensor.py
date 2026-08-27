@@ -7,7 +7,7 @@ from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigSubentry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import EntityCategory, MATCH_ALL, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -60,6 +60,10 @@ class BODSBusBaseEntity(CoordinatorEntity[BODSBusCoordinator], SensorEntity):
 
 class NextBusSensor(BODSBusBaseEntity):
     _attr_icon = "mdi:bus"
+    # The rich rolling timetable/vehicle attributes are intentionally available live
+    # for dashboards and automations, but can exceed Recorder's 16 KiB attribute
+    # limit at busy stops. They are transient data and are therefore not persisted.
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
     def __init__(self, coordinator, entry, subentry) -> None:
         super().__init__(coordinator, entry, subentry, "next_bus", "Next bus")
@@ -74,6 +78,11 @@ class NextBusSensor(BODSBusBaseEntity):
         snapshot = self.coordinator.data
         data = dict(snapshot.get("next_bus", {}))
         data["departures"] = snapshot.get("departures", [])
+        data["arrivals"] = snapshot.get("arrivals", [])
+        data["next_departure"] = snapshot.get("next_departure")
+        data["next_arrival"] = snapshot.get("next_arrival")
+        data["stop_view"] = snapshot.get("stop_view")
+        data["terminus"] = snapshot.get("terminus")
         data["tracker_updated"] = snapshot.get("generated_at")
         data["data_status"] = snapshot.get("health")
         data["live_vehicle_count"] = snapshot.get("live_vehicle_count")
