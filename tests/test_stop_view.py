@@ -48,7 +48,8 @@ def _inbound_trip() -> Trip:
         vehicle_journey_code="10",
         stops=[
             StopTime("A", 1, 41400, 41400, 55.000, -1.000, "Origin Town"),
-            StopTime("T", 2, 43200, 43200, 55.100, -1.100, "Terminus"),
+            StopTime("P", 2, 42900, 42900, 55.080, -1.080, "Previous Stop"),
+            StopTime("T", 3, 43200, 43200, 55.100, -1.100, "Terminus"),
         ],
     )
 
@@ -155,14 +156,19 @@ def test_terminus_both_separates_arrival_from_proven_outbound_at_stand() -> None
     assert result["next_bus"]["trip_id"] == "outbound-1"
     assert result["next_departure"]["trip_id"] == "outbound-1"
     assert result["next_arrival"]["trip_id"] == "inbound-1"
+    assert result["next_arrival"]["origin"] == "Origin Town"
+    assert result["next_arrival"]["previous_stop"] == "Previous Stop"
 
     assert result["departures"][0]["event_type"] == "departure"
+    assert result["departures"][0]["previous_stop"] is None
     assert result["arrivals"][0]["event_type"] == "arrival"
+    assert result["arrivals"][0]["previous_stop"] == "Previous Stop"
 
     at_stand = result["terminus"]["at_stand_departures"]
     arrived = result["terminus"]["arrived_vehicles"]
     assert [row["vehicle"] for row in at_stand] == ["OUT200"]
     assert [row["vehicle"] for row in arrived] == ["IN100"]
+    assert arrived[0]["previous_stop"] == "Previous Stop"
 
     # Crucially, the incoming vehicle is not inferred to form the outbound journey.
     assert at_stand[0]["vehicle"] != arrived[0]["vehicle"]
@@ -186,4 +192,5 @@ def test_arrivals_mode_selects_incoming_journey() -> None:
 
     assert result["next_bus"]["trip_id"] == "inbound-1"
     assert result["next_bus"]["stop_role"] == "destination"
+    assert result["next_bus"]["previous_stop"] == "Previous Stop"
     assert result["next_departure"]["trip_id"] == "outbound-1"
