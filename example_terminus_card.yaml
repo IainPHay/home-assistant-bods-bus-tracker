@@ -31,13 +31,13 @@ content: |
 
   {% if arrived | count > 0 %}
   {% for row in arrived[:2] %}
-  🔵 **Arrived: {{ row.get('route', '?') }}{% if row.get('origin') %} from {{ row.get('origin') }}{% endif %}**{% if row.get('vehicle') %} · Vehicle {{ row.get('vehicle') }}{% endif %}
+  🔵 **Arrived: {{ row.get('route', '?') }}**{% if row.get('previous_stop') %} · previous stop **{{ row.get('previous_stop') }}**{% elif row.get('origin') %} · from {{ row.get('origin') }}{% endif %}{% if row.get('vehicle') %} · Vehicle {{ row.get('vehicle') }}{% endif %}
   {% endfor %}
   {% endif %}
 
   {% if approaching | count > 0 %}
   {% for row in approaching[:2] %}
-  ➡️ **Approaching: {{ row.get('route', '?') }}{% if row.get('origin') %} from {{ row.get('origin') }}{% endif %}** · {% if row.get('minutes', 0) | int <= 0 %}Due now{% elif row.get('minutes') | int == 1 %}1 min{% else %}{{ row.get('minutes') }} min{% endif %}{% if row.get('expected') %} · {{ as_timestamp(row.get('expected')) | timestamp_custom('%H:%M', true) }}{% endif %}
+  ➡️ **Approaching: {{ row.get('route', '?') }}**{% if row.get('previous_stop') %} · previous stop **{{ row.get('previous_stop') }}**{% elif row.get('origin') %} · from {{ row.get('origin') }}{% endif %} · {% if row.get('minutes', 0) | int <= 0 %}Due now{% elif row.get('minutes') | int == 1 %}1 min{% else %}{{ row.get('minutes') }} min{% endif %}{% if row.get('expected') %} · {{ as_timestamp(row.get('expected')) | timestamp_custom('%H:%M', true) }}{% endif %}
   {% endfor %}
   {% endif %}
 
@@ -80,7 +80,7 @@ content: |
   {% set raw = row.get('raw_delay_minutes') -%}
   {% if raw is none -%}{% set raw = row.get('delay_minutes') -%}{% endif -%}
   {% set timing = row.get('timing_status') -%}
-  | **{{ row.get('route', '?') }}** {% if source == 'live' %}🟢{% else %}🕒{% endif %}{% if row.get('origin') %} ← {{ row.get('origin') }}{% endif %} | **{% if row.get('at_stop') %}At terminus{% elif mins <= 0 %}Due now{% elif mins == 1 %}1 min{% else %}{{ mins }} min{% endif %}**{% if expected %} · {{ as_timestamp(expected) | timestamp_custom('%H:%M', true) }}{% endif %}{% if source == 'live' and timing == 'late' and raw is not none %} · <font color="#d32f2f">**{{ '%.1f' | format(raw | float | abs) }}m late**</font>{% elif source == 'live' and timing == 'early' and raw is not none %} · {{ '%.1f' | format(raw | float | abs) }}m early{% elif source == 'live' and timing == 'on_time' %} · On time{% endif %} |
+  | **{{ row.get('route', '?') }}** {% if source == 'live' %}🟢{% else %}🕒{% endif %}{% if row.get('previous_stop') %} · via {{ row.get('previous_stop') }}{% elif row.get('origin') %} ← {{ row.get('origin') }}{% endif %} | **{% if row.get('at_stop') %}At terminus{% elif mins <= 0 %}Due now{% elif mins == 1 %}1 min{% else %}{{ mins }} min{% endif %}**{% if expected %} · {{ as_timestamp(expected) | timestamp_custom('%H:%M', true) }}{% endif %}{% if source == 'live' and timing == 'late' and raw is not none %} · <font color="#d32f2f">**{{ '%.1f' | format(raw | float | abs) }}m late**</font>{% elif source == 'live' and timing == 'early' and raw is not none %} · {{ '%.1f' | format(raw | float | abs) }}m early{% elif source == 'live' and timing == 'on_time' %} · On time{% endif %} |
   {% endfor %}
   {% if arrivals | count > 4 %}
   *+{{ arrivals | count - 4 }} later arrival{% if arrivals | count - 4 != 1 %}s{% endif %}*
