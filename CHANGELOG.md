@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 — 2026-08-27
+
+- Added an optional per-stop **Stop view** with **Departures**, **Arrivals**, and **Arrivals and departures** modes.
+- Preserved **Departures** as the default so existing intermediate boarding stops keep their previous passenger-facing behaviour unless explicitly reconfigured.
+- Added separate ordered `arrivals` and `departures` data for termini while keeping `Next bus`, walking guidance and `Leave now` tied to the next boardable departure.
+- Added conservative live terminus states: **At stand** for a proven outbound origin journey at the stop, **Arrived** for a proven inbound destination journey at the stop, and **Approaching** for a live inbound terminating journey within five minutes.
+- Incoming vehicles are never assumed to form a later outbound working; **At stand** is only shown after BODS/GTFS matching identifies the outbound origin journey itself.
+- Added `previous_stop` to arrival rows from the ordered GTFS stop sequence, giving clearer local context such as **Haymarket Barras Bridge** instead of ambiguous generic journey origins such as `Bus Station`.
+- Marked the large rolling `departures`, `arrivals`, and terminus attributes as unrecorded so they remain available live to dashboards and automations without exceeding Home Assistant Recorder's state-attribute size limit.
+- Added a separate generic stock Home Assistant terminus Markdown card alongside the existing generic departure card.
+- Added terminus documentation and a real Home Assistant Haymarket Bus Station example showing simultaneous **At stand**, **Approaching**, separate arrivals/departures and `previous_stop` presentation.
+- Real-world beta validation completed with Arriva North East X14/X15/X16/X18 services at The Fairway and Haymarket Bus Station, including live **Approaching**, **Arrived**, **At stand**, conservative inbound/outbound vehicle linking, and Recorder regression testing.
+- HACS, Hassfest and runtime/manifest version-sync validation passed before release.
+
 ## 0.4.2 — 2026-08-26
 
 - Replaced the corrupted/truncated bus icon with a complete 256×256 transparent icon with safe padding so the full bus body and wheels remain visible across Home Assistant views, including Repairs.
