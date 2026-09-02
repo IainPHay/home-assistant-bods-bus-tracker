@@ -5,7 +5,10 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from custom_components.bods_bus_tracker.walking import apply_walking_guidance
+from custom_components.bods_bus_tracker.walking import (
+    apply_walking_guidance,
+    normalise_dynamic_walking_minutes,
+)
 
 TZ = ZoneInfo("Europe/London")
 
@@ -68,3 +71,41 @@ def test_unavailable_next_bus_has_no_leave_guidance() -> None:
     assert data["leave_by"] is None
     assert data["leave_in_minutes"] is None
     assert data["leave_now"] is False
+
+
+def test_dynamic_minutes_accept_minutes() -> None:
+    assert normalise_dynamic_walking_minutes("7.5", "min", 120) == 7.5
+
+
+def test_dynamic_minutes_convert_seconds() -> None:
+    assert normalise_dynamic_walking_minutes(450, "s", 120) == 7.5
+
+
+def test_dynamic_minutes_convert_hours() -> None:
+    assert normalise_dynamic_walking_minutes(0.125, "h", 120) == 7.5
+
+
+def test_dynamic_minutes_reject_bad_values() -> None:
+    assert normalise_dynamic_walking_minutes("unknown", "min", 120) is None
+    assert normalise_dynamic_walking_minutes(-1, "min", 120) is None
+    assert normalise_dynamic_walking_minutes(121, "min", 120) is None
+    assert normalise_dynamic_walking_minutes(10, None, 120) is None
+
+
+def test_walking_metadata_is_exposed() -> None:
+    now = datetime(2026, 8, 26, 10, 0, tzinfo=TZ)
+    data = apply_walking_guidance(
+        _snapshot(),
+        now,
+        8,
+        walking_mode="dynamic",
+        walking_time_entity="sensor.walk_to_stop",
+        walking_dynamic_minutes=7.4,
+        walking_fallback=False,
+        walking_source_status="ok",
+    )["next_bus"]
+    assert data["walking_mode"] == "dynamic"
+    assert data["walking_time_entity"] == "sensor.walk_to_stop"
+    assert data["walking_dynamic_minutes"] == 7.4
+    assert data["walking_fallback"] is False
+    assert data["walking_source_status"] == "ok"

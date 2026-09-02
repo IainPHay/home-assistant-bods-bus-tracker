@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0-beta.1 — in development
+
+- Added optional per-stop **routed dynamic walking time** using a Home Assistant travel-time sensor while retaining the configured static walking time as a safe fallback.
+- Kept routing provider-neutral: BODS Bus Tracker consumes an existing Home Assistant duration sensor rather than storing HERE/Google credentials or calling routing providers directly.
+- Added support for duration sensors reporting seconds, minutes or hours, with valid routed times rounded up to the next whole minute for passenger leave guidance.
+- Added safe fallback for missing, unavailable, stale, invalid or excessive routed travel-time values; existing static-only stops remain unchanged unless dynamic walking is explicitly enabled.
+- Kept `Leave by`, `Leave in` and `Leave now` tied to the next boardable departure and kept all dynamic-walking processing downstream of the BODS/GTFS ETA-matching engine.
+- Added dynamic-walking runtime attributes and diagnostics without copying person/device coordinates into BODS Bus Tracker state.
+- Added `DYNAMIC_WALKING.md` with provider-neutral setup guidance and HERE Travel Time / Google Maps Travel Time examples.
+- Declared the integration as `single_config_entry` so Home Assistant no longer offers a redundant second BODS account/hub while retaining the native **Add bus stop** subentry action.
+
 ## 0.5.0 — 2026-08-27
 
 - Added an optional per-stop **Stop view** with **Departures**, **Arrivals**, and **Arrivals and departures** modes.
@@ -78,15 +89,3 @@
 - Added stop search by **stop name**, **ATCO code** or **NaPTAN/SMS code** inside a selected BODS region.
 - Added automatic BODS region detection for exact stop codes; region attempts are ordered using the Home Assistant installation location to avoid unnecessary GTFS downloads in the common case.
 - Added a stop-selection step when a name search returns multiple boarding points.
-- Added service reconfiguration without deleting/re-adding the tracker.
-- Added BODS API-key reauthentication flow and automatic reauth trigger when all selected live feeds reject the key.
-- Enriched the **Next bus** entity with generic departure-board attributes: ordered departures, tracker update time, data status, live vehicle count, GTFS matches and stop details.
-- Added a generic stock Home Assistant Markdown departure-board card requiring only the tracker's **Next bus** entity ID.
-- Preserved the 0.1 ETA/matching engine; Morpeth regression remains 15/15 exact live-to-GTFS matches.
-
-## 0.1.0 — 2026-08-25
-
-- First native Home Assistant beta.
-- BODS API key, region, ATCO stop and service selection through config flow.
-- Regional GTFS cache, SIRI-VM polling, GPS-based delay estimation and timetable fallback.
-- Native sensors and diagnostics.

@@ -26,6 +26,7 @@ from .const import (
 )
 from .coordinator import BODSBusCoordinator
 from .gtfs import GTFSDownloadError
+from .live_feed import BODSLiveFeedClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,6 +36,7 @@ class BODSBusRuntimeData:
     """Runtime data for a BODS Bus Tracker account."""
 
     coordinators: dict[str, BODSBusCoordinator]
+    live_feed: BODSLiveFeedClient
 
 
 type BODSBusConfigEntry = ConfigEntry[BODSBusRuntimeData]
@@ -113,9 +115,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> bool:
     """Set up one BODS account and all configured stop subentries."""
     coordinators: dict[str, BODSBusCoordinator] = {}
+    live_feed = BODSLiveFeedClient(hass, entry.data[CONF_API_KEY])
 
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
-        coordinator = BODSBusCoordinator(hass, entry, subentry)
+        coordinator = BODSBusCoordinator(hass, entry, subentry, live_feed)
         try:
             await coordinator.async_prepare()
         except GTFSDownloadError as exc:
@@ -125,7 +128,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> b
         await coordinator.async_config_entry_first_refresh()
         coordinators[subentry.subentry_id] = coordinator
 
-    entry.runtime_data = BODSBusRuntimeData(coordinators=coordinators)
+    entry.runtime_data = BODSBusRuntimeData(
+        coordinators=coordinators,
+        live_feed=live_feed,
+    )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

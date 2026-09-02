@@ -38,6 +38,7 @@ from .const import (
     AUTO_REGION,
     BODS_VEHICLE_URL,
     CONF_API_KEY,
+    CONF_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SERVICES,
@@ -47,12 +48,11 @@ from .const import (
     CONF_STOP_SELECTION,
     CONF_STOP_VIEW,
     CONF_WALKING_TIME,
+    CONF_WALKING_TIME_ENTITY,
+    DEFAULT_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
-    STOP_VIEW_ARRIVALS,
-    STOP_VIEW_BOTH,
-    STOP_VIEW_DEPARTURES,
     DOMAIN,
     MAX_POLL_INTERVAL,
     MAX_WALKING_TIME,
@@ -61,6 +61,9 @@ from .const import (
     REGIONS,
     REGION_CENTRES,
     STOP_SEARCH_LIMIT,
+    STOP_VIEW_ARRIVALS,
+    STOP_VIEW_BOTH,
+    STOP_VIEW_DEPARTURES,
     SUBENTRY_TYPE_STOP,
     VERSION,
 )
@@ -83,9 +86,6 @@ async def _async_validate_api_key_generic(hass: HomeAssistant, api_key: str) -> 
         timeout=ClientTimeout(total=20),
         headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
     ) as response:
-        # Authentication failure is the only client error which matters here. A
-        # provider-side 400 for deliberately empty filters still proves the key was
-        # accepted; 429/5xx means BODS is currently unavailable.
         if response.status in (401, 403) or response.status == 429 or response.status >= 500:
             response.raise_for_status()
         await response.read()
@@ -174,6 +174,11 @@ def _stop_search_schema(default_region: str = AUTO_REGION) -> vol.Schema:
             ),
         }
     )
+
+
+def _walking_time_entity_selector() -> selector.EntitySelector:
+    """Return a generic sensor selector for provider-neutral routed duration."""
+    return selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
 
 
 async def _async_auto_detect_stop(
@@ -478,8 +483,18 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             selected = list(user_input[CONF_SERVICES])
+            dynamic_walking = bool(
+                user_input.get(
+                    CONF_DYNAMIC_WALKING_TIME, DEFAULT_DYNAMIC_WALKING_TIME
+                )
+            )
+            walking_entity = str(
+                user_input.get(CONF_WALKING_TIME_ENTITY) or ""
+            ).strip()
             if not selected:
                 errors[CONF_SERVICES] = "select_service"
+            elif dynamic_walking and not walking_entity:
+                errors[CONF_WALKING_TIME_ENTITY] = "walking_time_entity_required"
             else:
                 entry = self._get_entry()
                 try:
@@ -511,6 +526,8 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                     self._data[CONF_WALKING_TIME] = int(
                         user_input.get(CONF_WALKING_TIME, DEFAULT_WALKING_TIME)
                     )
+                    self._data[CONF_DYNAMIC_WALKING_TIME] = dynamic_walking
+                    self._data[CONF_WALKING_TIME_ENTITY] = walking_entity
                     self._data[CONF_POLL_INTERVAL] = int(
                         user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
                     )
@@ -562,6 +579,11 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         )
                     ),
                     vol.Optional(
+                        CONF_DYNAMIC_WALKING_TIME,
+                        default=DEFAULT_DYNAMIC_WALKING_TIME,
+                    ): selector.BooleanSelector(),
+                    vol.Optional(CONF_WALKING_TIME_ENTITY): _walking_time_entity_selector(),
+                    vol.Optional(
                         CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
@@ -581,7 +603,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Change services, stop view, walking time and poll interval for one stop."""
+        """Change services, stop view, walking guidance and poll interval."""
         entry = self._get_entry()
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
@@ -598,8 +620,18 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
 
         if user_input is not None:
             selected = list(user_input[CONF_SERVICES])
+            dynamic_walking = bool(
+                user_input.get(
+                    CONF_DYNAMIC_WALKING_TIME, DEFAULT_DYNAMIC_WALKING_TIME
+                )
+            )
+            walking_entity = str(
+                user_input.get(CONF_WALKING_TIME_ENTITY) or ""
+            ).strip()
             if not selected:
                 errors[CONF_SERVICES] = "select_service"
+            elif dynamic_walking and not walking_entity:
+                errors[CONF_WALKING_TIME_ENTITY] = "walking_time_entity_required"
             else:
                 try:
                     await _async_validate_api_key(
@@ -624,9 +656,21 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             CONF_SERVICES: selected,
                             CONF_STOP_VIEW: str(user_input[CONF_STOP_VIEW]),
                             CONF_WALKING_TIME: int(user_input[CONF_WALKING_TIME]),
+                            CONF_DYNAMIC_WALKING_TIME: dynamic_walking,
+                            CONF_WALKING_TIME_ENTITY: walking_entity,
                             CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
                         },
                     )
+
+        entity_marker = vol.Optional(CONF_WALKING_TIME_ENTITY)
+        existing_entity = str(
+            subentry.data.get(CONF_WALKING_TIME_ENTITY) or ""
+        ).strip()
+        if existing_entity:
+            entity_marker = vol.Optional(
+                CONF_WALKING_TIME_ENTITY,
+                description={"suggested_value": existing_entity},
+            )
 
         return self.async_show_form(
             step_id="reconfigure",
@@ -674,6 +718,16 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             unit_of_measurement="min",
                         )
                     ),
+                    vol.Required(
+                        CONF_DYNAMIC_WALKING_TIME,
+                        default=bool(
+                            subentry.data.get(
+                                CONF_DYNAMIC_WALKING_TIME,
+                                DEFAULT_DYNAMIC_WALKING_TIME,
+                            )
+                        ),
+                    ): selector.BooleanSelector(),
+                    entity_marker: _walking_time_entity_selector(),
                     vol.Required(
                         CONF_POLL_INTERVAL,
                         default=int(
