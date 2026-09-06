@@ -136,6 +136,14 @@ class NextBusDelaySensor(BODSBusBaseEntity):
         super().__init__(coordinator, entry, subentry, "next_bus_delay", "Next bus delay")
 
     @property
+    def available(self) -> bool:
+        """Only expose a numeric delay while a live delay estimate exists."""
+        return (
+            super().available
+            and self.coordinator.data.get("next_bus", {}).get("delay_minutes") is not None
+        )
+
+    @property
     def native_value(self):
         return self.coordinator.data.get("next_bus", {}).get("delay_minutes")
 
