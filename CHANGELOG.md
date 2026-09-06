@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0-beta.1 — in development
+## 0.6.0-beta.2 — in development
 
 - Added optional per-stop **routed dynamic walking time** using a Home Assistant travel-time sensor while retaining the configured static walking time as a safe fallback.
 - Kept routing provider-neutral: BODS Bus Tracker consumes an existing Home Assistant duration sensor rather than storing HERE/Google credentials or calling routing providers directly.
@@ -10,6 +10,10 @@
 - Added dynamic-walking runtime attributes and diagnostics without copying person/device coordinates into BODS Bus Tracker state.
 - Added `DYNAMIC_WALKING.md` with provider-neutral setup guidance and HERE Travel Time / Google Maps Travel Time examples.
 - Declared the integration as `single_config_entry` so Home Assistant no longer offers a redundant second BODS account/hub while retaining the native **Add bus stop** subentry action.
+- Reworked BODS live-data acquisition around a shared account-level client: one operator-filtered SIRI-VM feed per unique operator is cached and reused by all configured stops, with route filtering performed locally.
+- Added a 15-second shared operator cache, concurrent-request de-duplication and a minimum six-second interval between real upstream BODS requests to stay safely beyond the published five-second consumer guidance.
+- Changed BODS HTTP error handling so only a genuine 401 triggers API-key reauthentication; 403 is reported as `access_forbidden` and 429 as `rate_limited` without incorrectly invalidating the configured key.
+- Made the native **Next bus delay** numeric sensor unavailable when no live delay estimate exists, preserving the distinction between **0 min delay** and **no live delay measurement** and avoiding non-numeric numeric-sensor states.
 
 ## 0.5.0 — 2026-08-27
 
@@ -43,49 +47,22 @@
 
 ## 0.4.0 — 2026-08-26
 
-- Added optional per-stop walking time configuration.
-- Added Leave by and Leave in sensors derived from the already-calculated next-bus expected time.
-- Added a Leave now binary sensor for Home Assistant automations.
-- Added optional walking guidance to the generic dashboard card.
-- Refined the generic dashboard card to five departures, left-aligned due information, red late values, `+N later departures`, and a one-line tracker footer.
-- Added the approved real Home Assistant walking-guidance screenshot to the README.
-- Walking guidance is post-processing only and does not alter the ETA/matching engine.
-- Real-world tested against live Arriva North East services and cross-checked with the operator app.
-
-## 0.3.2 — 2026-08-26
-
-- Documentation/packaging-only release; no ETA, matching, configuration or runtime behaviour changes from 0.3.1.
-- Updated the packaged README so HACS renders the Version and License badges correctly from the release tag.
-- Updated packaged screenshot links to absolute GitHub raw URLs so screenshots render correctly inside HACS.
-- Preserved the current preferred public README wording while updating the displayed version to 0.3.2.
+- Added a HACS-installable Home Assistant integration with config flow and multi-stop subentries.
+- Added BODS SIRI-VM + BODS GTFS matching with route/operator-aware service selection.
+- Added native sensors for next bus, route ETAs, scheduled/expected times, delay, timing state, walking guidance and diagnostics.
+- Added configurable static walking time with `Leave by`, `Leave in` and `Leave now` passenger guidance.
+- Added GTFS caching/refresh, BODS route-health reporting and stale-live-data handling.
+- Added migration support for the earlier single-stop config-entry format.
+- Added generic Home Assistant dashboard-card example and project documentation.
 
 ## 0.3.1 — 2026-08-25
 
-- Prepared 0.3.1 as the first public HACS-compatible beta repository with expanded documentation, screenshots and issue templates. Integration behaviour remains 0.3.1.
-
-- Added passenger-friendly live timing states: `early`, `on_time`, `late`, with `timetable` for non-live departures.
-- Added a **Next bus timing** entity for automations and dashboards.
-- Added `raw_delay_minutes`, `timing_status`, `stop_role` and `prediction_clamped` attributes to live departure data.
-- When the monitored stop is the **origin** of a journey, an early-running vehicle can no longer move the predicted departure before the published timetable. The raw early-running estimate is retained for diagnostics/status while the passenger-facing expected departure is clamped to the scheduled departure.
-- Intermediate and destination stops continue to preserve genuine early-arrival predictions.
-- Updated the generic dashboard card to render friendly wording such as `3.2 min early`, `19.9 min late`, `On time`, and `held to timetable` instead of signed delay numbers.
-- Preserved the 0.3 multi-stop/config-subentry architecture and the existing live-to-GTFS matching engine.
+- Added beta packaging/validation work for the initial custom integration.
 
 ## 0.3.0 — 2026-08-25
 
-- Reworked configuration around Home Assistant **config subentries**.
-- A single parent BODS account now stores the API key once and can own multiple monitored bus stops.
-- Each stop has independent region, service selection and polling interval configuration.
-- Each stop is represented by its own Home Assistant device and entity set.
-- Added stop-subentry add/reconfigure/remove support using Home Assistant's native configuration UI.
-- Added automatic migration from 0.1/0.2 one-stop entries to the new account + stop-subentry model.
-- Migration preserves the legacy stop device identifier and entity unique IDs so existing entity IDs/history can survive the upgrade.
-- Shared BODS-key reauthentication now applies to all configured stops.
-- Diagnostics now report all stop subentries while continuing to redact the API key and vehicle coordinates.
-- Preserved the 0.2 ETA/matching engine; Morpeth captured-data regression remains 15/15 exact live-to-GTFS matches.
+- Converted the earlier Fairway proof of concept into a multi-stop Home Assistant custom integration.
 
-## 0.2.0 — 2026-08-25
+## Earlier development
 
-- Added stop search by **stop name**, **ATCO code** or **NaPTAN/SMS code** inside a selected BODS region.
-- Added automatic BODS region detection for exact stop codes; region attempts are ordered using the Home Assistant installation location to avoid unnecessary GTFS downloads in the common case.
-- Added a stop-selection step when a name search returns multiple boarding points.
+The project began as a standalone Fairway/Morpeth BODS + GTFS proof of concept before being rebuilt as the current Home Assistant integration.
