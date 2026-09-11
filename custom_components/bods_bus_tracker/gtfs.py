@@ -27,10 +27,10 @@ from .api import (
     validate_gtfs,
 )
 from .const import CACHE_DIR, DEFAULT_GTFS_REFRESH_HOURS, GTFS_URL_TEMPLATE, VERSION
+from .gtfs_cache_model import GTFS_INDEX_CACHE_SCHEMA, cache_matches_inputs
 
 _LOGGER = logging.getLogger(__name__)
 _REGION_LOCKS: defaultdict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-GTFS_INDEX_CACHE_SCHEMA = 1
 
 
 class GTFSDownloadError(Exception):
@@ -185,13 +185,12 @@ def _load_parsed_index(
     """Load a parsed GTFS index only when its inputs still match exactly."""
     try:
         payload = json.loads(cache_path.read_text(encoding="utf-8"))
-        if payload.get("schema") != GTFS_INDEX_CACHE_SCHEMA:
-            return None
-        if payload.get("gtfs") != fingerprint:
-            return None
-        if payload.get("service_date") != service_date.isoformat():
-            return None
-        if tuple(payload.get("services", ())) != service_keys:
+        if not cache_matches_inputs(
+            payload,
+            fingerprint,
+            service_date.isoformat(),
+            service_keys,
+        ):
             return None
         raw_trips = payload.get("trips")
         info = payload.get("info")
