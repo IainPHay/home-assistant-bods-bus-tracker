@@ -65,6 +65,16 @@ class BODSLiveFeedClient:
             if self._inflight.get(operator_noc) is task:
                 self._inflight.pop(operator_noc, None)
 
+    async def async_close(self) -> None:
+        """Cancel outstanding work and release account-level runtime state."""
+        tasks = list(self._inflight.values())
+        self._inflight.clear()
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._cache.clear()
+
     async def _async_fetch_operator(self, operator_noc: str) -> BODSLiveFeedResult:
         """Fetch and cache one operator-level feed with global request spacing."""
         async with self._request_lock:
