@@ -98,6 +98,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._gtfs_generation: int | None = None
         self._gtfs_initial_source: str | None = None
         self._gtfs_initial_prepare_seconds: float | None = None
+        self._last_live_health: str | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -157,6 +158,32 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_refresh_gtfs_if_needed(self, now: datetime) -> None:
         await self._async_sync_gtfs(now.date())
+
+    def _log_live_health_transition(self, health: str) -> None:
+        """Log live-data availability only when its state changes."""
+        previous = self._last_live_health
+        if health == previous:
+            return
+
+        self._last_live_health = health
+        if health == "ok":
+            if previous in {"degraded", "scheduled_only"}:
+                _LOGGER.info(
+                    "%s BODS live vehicle data is available again",
+                    self.stop_name,
+                )
+            return
+
+        if health == "degraded":
+            _LOGGER.warning(
+                "%s BODS live vehicle data is degraded; timetable fallback will be used where needed",
+                self.stop_name,
+            )
+        elif health == "scheduled_only":
+            _LOGGER.warning(
+                "%s BODS live vehicle data is unavailable; using timetable data",
+                self.stop_name,
+            )
 
     def _walking_guidance_values(
         self, now: datetime
@@ -305,6 +332,8 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.stop_view,
             MAX_LIVE_AGE_SECONDS,
         )
+
+        self._log_live_health_transition(str(snapshot.get("health", "unknown")))
 
         # Walking guidance is intentionally tied to a boardable departure. In arrivals
         # mode it is disabled; in both mode Next bus remains the next departure.
