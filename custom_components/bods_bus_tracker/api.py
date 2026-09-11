@@ -679,11 +679,11 @@ def project_to_segment(
 def estimate_delay_and_progress(
     vehicle: LiveVehicle, trip: Trip, service_date: date
 ) -> tuple[float, float, float] | None:
-    if len(scheduled_trip.stops) < 2:
+    if len(trip.stops) < 2:
         return None
 
     options: list[tuple[float, float, int, float]] = []
-    for index in range(len(scheduled_trip.stops) - 1):
+    for index in range(len(trip.stops) - 1):
         distance, fraction = project_to_segment(
             vehicle.lat, vehicle.lon, trip.stops[index], trip.stops[index + 1]
         )
