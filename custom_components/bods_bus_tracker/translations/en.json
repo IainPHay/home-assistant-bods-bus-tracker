@@ -23,7 +23,9 @@
     "error": {
       "cannot_connect": "Unable to connect to BODS.",
       "invalid_auth": "The BODS API key was rejected.",
-      "unknown": "Unexpected error. Check the Home Assistant log for details."
+      "unknown": "Unexpected error. Check the Home Assistant log for details.",
+      "access_forbidden": "BODS refused access to the request. Check the account status or try again later.",
+      "rate_limited": "BODS is temporarily rate limiting requests. Wait a short time and try again."
     },
     "abort": {
       "account_already_configured": "A BODS account is already configured. Add another bus stop to the existing BODS Bus Tracker entry instead.",
@@ -109,7 +111,9 @@
         "stop_search_required": "Enter a stop name or code.",
         "stop_selection_invalid": "Select one of the discovered stops.",
         "walking_time_entity_required": "Select a travel-time sensor when routed dynamic walking time is enabled.",
-        "unknown": "Unexpected error. Check the Home Assistant log for details."
+        "unknown": "Unexpected error. Check the Home Assistant log for details.",
+        "access_forbidden": "BODS refused access to the selected service. Check the account status or try again later.",
+        "rate_limited": "BODS is temporarily rate limiting requests. Wait a short time and try again."
       },
       "abort": {
         "already_configured": "This stop is already configured in this BODS account.",
