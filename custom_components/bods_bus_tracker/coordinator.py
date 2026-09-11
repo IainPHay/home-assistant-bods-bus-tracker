@@ -33,6 +33,7 @@ from .const import (
     CONF_WALKING_TIME_ENTITY,
     DEFAULT_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
+    DOMAIN,
     DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
     DYNAMIC_WALKING_STALE_SECONDS,
@@ -269,7 +270,10 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             await self._async_refresh_gtfs_if_needed(now)
         except Exception as exc:
-            raise UpdateFailed(f"Unable to prepare BODS timetable data: {exc}") from exc
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="gtfs_update_failed",
+            ) from exc
 
         operators = list(self._services_by_operator)
         results: list[BODSLiveFeedResult] = await asyncio.gather(
@@ -306,7 +310,10 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             route_errors.get(service.key) == "authentication_failed"
             for service in self.services
         ):
-            raise ConfigEntryAuthFailed("BODS API key was rejected")
+            raise ConfigEntryAuthFailed(
+                translation_domain=DOMAIN,
+                translation_key="api_key_rejected",
+            )
 
         snapshot = await self.hass.async_add_executor_job(
             make_snapshot,
