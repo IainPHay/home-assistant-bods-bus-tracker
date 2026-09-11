@@ -1,2 +1,3 @@
 pytest-homeassistant-custom-component==0.13.364
 pytest-cov>=6,<8
+mypy>=1.17,<2
