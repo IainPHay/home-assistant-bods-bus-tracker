@@ -184,5 +184,16 @@
         "name": "Leave now"
       }
     }
+  },
+  "exceptions": {
+    "api_key_rejected": {
+      "message": "The BODS API key was rejected."
+    },
+    "gtfs_prepare_failed": {
+      "message": "Unable to prepare the regional GTFS timetable for {stop}. Home Assistant will retry automatically."
+    },
+    "gtfs_update_failed": {
+      "message": "Unable to refresh BODS timetable data. Home Assistant will retry automatically."
+    }
   }
 }
