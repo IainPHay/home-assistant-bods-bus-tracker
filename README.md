@@ -173,6 +173,14 @@ Typical ways to use BODS Bus Tracker include:
 - **Terminus monitoring** — use **Arrivals and departures** to distinguish incoming buses, approaching arrivals and independently matched outbound vehicles at stand.
 - **Service health monitoring** — use **Data status**, **Last update** and downloadable diagnostics to distinguish live BODS problems from timetable fallback.
 
+## Automation example
+
+A ready-to-import Home Assistant automation blueprint is included for the most common walking-guidance use case:
+
+- [`BODS Bus Tracker - Leave now notification`](blueprints/automation/bods_bus_tracker_leave_now.yaml) — select a stop's **Leave now** binary sensor and choose any notification or announcement action to run when it turns on.
+
+The blueprint is intentionally generic: it can call a mobile notification, Alexa announcement, script or other Home Assistant action without hard-coding a notification service.
+
 ## Stop views
 
 ### Departures
