@@ -9,8 +9,8 @@ rules:
   brands: done
   common-modules: done
   config-flow-test-coverage:
-    status: todo
-    comment: Full Home Assistant-native config, subentry and reauthentication flow coverage is still to be added.
+    status: done
+    comment: Home Assistant-native parent, reauth, stop-subentry and reconfigure flows are fully covered; config_flow.py measures 100 percent.
   config-flow: done
   dependency-transparency:
     status: done
@@ -50,8 +50,8 @@ rules:
   parallel-updates: done
   reauthentication-flow: done
   test-coverage:
-    status: todo
-    comment: Coverage enforcement above 95 percent is not yet in CI.
+    status: done
+    comment: The Home Assistant-native suite currently measures 97 percent and CI fails below 95 percent.
 
   # Gold
   devices: done
