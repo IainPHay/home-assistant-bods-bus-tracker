@@ -15,7 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Iterable
+from typing import BinaryIO, Iterable
 from zoneinfo import ZoneInfo
 
 from .const import LOCAL_TIME_ZONE, SERVICE_SEPARATOR
@@ -317,6 +317,45 @@ def search_stops(
     return tuple(item[2] for item in results[:limit])
 
 
+def _calling_trip_ids_for_stop(
+    file_handle: BinaryIO,
+    stop_id: str,
+    allowed_trip_ids: set[str],
+) -> set[str]:
+    """Return trips calling at one stop without CSV-parsing every GTFS row.
+
+    stop_times.txt is normally by far the largest file in a regional GTFS
+    archive. Reconfigure only needs rows for one stop, so cheaply reject raw
+    UTF-8 lines that cannot contain the target stop ID before invoking the CSV
+    parser. Candidate lines are still parsed normally, preserving CSV quoting
+    semantics and exact column matching.
+    """
+    header_raw = file_handle.readline()
+    if not header_raw:
+        return set()
+
+    header = next(csv.reader([header_raw.decode("utf-8-sig").rstrip("\r\n")]))
+    try:
+        trip_index = header.index("trip_id")
+        stop_index = header.index("stop_id")
+    except ValueError:
+        return set()
+
+    required_index = max(trip_index, stop_index)
+    stop_token = stop_id.encode("utf-8")
+    calling_trip_ids: set[str] = set()
+
+    for raw_line in file_handle:
+        if stop_token not in raw_line:
+            continue
+        row = next(csv.reader([raw_line.decode("utf-8").rstrip("\r\n")]))
+        if len(row) <= required_index:
+            continue
+        if row[stop_index] == stop_id and row[trip_index] in allowed_trip_ids:
+            calling_trip_ids.add(row[trip_index])
+
+    return calling_trip_ids
+
 def discover_stop_services(gtfs_path: Path, stop_id: str) -> StopDiscovery:
     """Find a stop and the operator/route pairs that call there."""
     with zipfile.ZipFile(gtfs_path) as zf:
@@ -355,11 +394,12 @@ def discover_stop_services(gtfs_path: Path, stop_id: str) -> StopDiscovery:
                         row.get("trip_headsign", "").strip(),
                     )
 
-        calling_trip_ids: set[str] = set()
         with zf.open("stop_times.txt") as file_handle:
-            for row in csv.DictReader(io.TextIOWrapper(file_handle, "utf-8-sig")):
-                if row.get("stop_id") == stop_id and row.get("trip_id") in trips:
-                    calling_trip_ids.add(row["trip_id"])
+            calling_trip_ids = _calling_trip_ids_for_stop(
+                file_handle,
+                stop_id,
+                set(trips),
+            )
 
     discovered: dict[tuple[str, str], dict[str, object]] = {}
     for trip_id in calling_trip_ids:
