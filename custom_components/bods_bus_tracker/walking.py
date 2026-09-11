@@ -46,6 +46,7 @@ def apply_walking_guidance(
     walking_mode: str = "static",
     walking_time_entity: str | None = None,
     walking_dynamic_minutes: float | None = None,
+    walking_max_dynamic_minutes: int | None = None,
     walking_fallback: bool = False,
     walking_source_status: str = "ok",
 ) -> dict[str, Any]:
@@ -59,6 +60,7 @@ def apply_walking_guidance(
     next_bus["walking_mode"] = walking_mode
     next_bus["walking_time_entity"] = walking_time_entity
     next_bus["walking_dynamic_minutes"] = walking_dynamic_minutes
+    next_bus["walking_max_dynamic_minutes"] = walking_max_dynamic_minutes
     next_bus["walking_fallback"] = walking_fallback
     next_bus["walking_source_status"] = walking_source_status
     next_bus["leave_by"] = None
