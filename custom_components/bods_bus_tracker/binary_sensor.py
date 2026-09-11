@@ -15,6 +15,8 @@ from . import BODSBusConfigEntry
 from .const import CONF_LEGACY_ENTITY_IDS, DOMAIN, SUBENTRY_TYPE_STOP, VERSION
 from .coordinator import BODSBusCoordinator
 
+PARALLEL_UPDATES = 0
+
 
 class LeaveNowBinarySensor(CoordinatorEntity[BODSBusCoordinator], BinarySensorEntity):
     """Turn on when it is time to start walking to the selected stop."""
