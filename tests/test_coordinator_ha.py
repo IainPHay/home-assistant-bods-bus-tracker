@@ -18,6 +18,7 @@ from custom_components.bods_bus_tracker.api import ServiceSpec, StopTime, Trip
 from custom_components.bods_bus_tracker.const import (
     CONF_API_KEY,
     CONF_DYNAMIC_WALKING_TIME,
+    CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SERVICES,
@@ -44,6 +45,7 @@ def _entry(
     walking: int = 5,
     dynamic: bool = False,
     walking_entity: str = "",
+    max_dynamic: int = 120,
 ):
     return MockConfigEntry(
         domain=DOMAIN,
@@ -61,6 +63,7 @@ def _entry(
                     CONF_WALKING_TIME: walking,
                     CONF_DYNAMIC_WALKING_TIME: dynamic,
                     CONF_WALKING_TIME_ENTITY: walking_entity,
+                    CONF_MAX_DYNAMIC_WALKING_TIME: max_dynamic,
                     CONF_POLL_INTERVAL: 30,
                 },
                 subentry_id="stop",
@@ -96,6 +99,7 @@ def _coordinator(
     walking: int = 5,
     dynamic: bool = False,
     walking_entity: str = "",
+    max_dynamic: int = 120,
 ):
     entry = _entry(
         services=services,
@@ -103,6 +107,7 @@ def _coordinator(
         walking=walking,
         dynamic=dynamic,
         walking_entity=walking_entity,
+        max_dynamic=max_dynamic,
     )
     entry.add_to_hass(hass)
     subentry = next(iter(entry.subentries.values()))
@@ -242,6 +247,40 @@ async def test_dynamic_walking_valid_state_rounds_up(hass) -> None:
         values = coordinator._walking_guidance_values(now)
 
     assert values == (7, "dynamic", 6.5, False, "ok")
+
+
+async def test_dynamic_walking_uses_configured_maximum(hass) -> None:
+    """The per-stop maximum replaces the old fixed 120-minute ceiling."""
+    now = datetime.now(TZ)
+    fake = SimpleNamespace(
+        state="407.266666666667",
+        attributes={"unit_of_measurement": "min"},
+        last_reported=now,
+        last_updated=now,
+    )
+
+    default_coordinator, _, _ = _coordinator(
+        hass,
+        dynamic=True,
+        walking=0,
+        walking_entity="sensor.walk",
+    )
+    with patch("homeassistant.core.StateMachine.get", return_value=fake):
+        default_values = default_coordinator._walking_guidance_values(now)
+
+    assert default_values == (0, "disabled", None, True, "invalid")
+
+    expanded_coordinator, _, _ = _coordinator(
+        hass,
+        dynamic=True,
+        walking=0,
+        walking_entity="sensor.walk",
+        max_dynamic=500,
+    )
+    with patch("homeassistant.core.StateMachine.get", return_value=fake):
+        expanded_values = expanded_coordinator._walking_guidance_values(now)
+
+    assert expanded_values == (408, "dynamic", 407.266666666667, False, "ok")
 
 
 def test_live_health_transition_logging(hass, caplog) -> None:
