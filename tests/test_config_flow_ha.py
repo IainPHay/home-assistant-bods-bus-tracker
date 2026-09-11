@@ -75,7 +75,7 @@ async def test_duplicate_account_aborts(hass) -> None:
     )
 
     assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "account_already_configured"
+    assert result["reason"] == "single_instance_allowed"
 
 
 @pytest.mark.parametrize(
