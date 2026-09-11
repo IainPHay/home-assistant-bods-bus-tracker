@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0-beta.6 — in development
+
+- Made the routed-walking safety ceiling configurable per bus stop instead of hard-coding 120 minutes.
+- Existing stops remain backward compatible and default to **120 minutes** until reconfigured.
+- Added **Maximum routed walking time** to add/reconfigure flows, allowing values from 1 to 1440 minutes.
+- Routed durations above the configured limit continue to use the static fallback exactly as before.
+- Exposed `walking_max_dynamic_minutes` on the Next bus attributes for transparent diagnostics.
+- Added regression coverage proving the default 120-minute ceiling is retained and that a higher configured limit can accept a longer provider duration.
+
+
 ## 0.6.0-beta.5 — 2026-09-11
 
 - Fixed a release-blocking Home Assistant reconfigure-flow timeout found during beta.4 testing.
