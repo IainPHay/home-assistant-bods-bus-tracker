@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.6.0-beta.3 — in development
+## 0.6.0-beta.4 — in development
+
+- Added a pure GTFS parsed-index cache-validation policy and automated regression tests.
+- Cache reuse is now explicitly tested to require an exact match for the GTFS file fingerprint, service date, configured service set and cache schema.
+- Added a dedicated CI job for GTFS cache invalidation policy tests.
+
+## 0.6.0-beta.3 — 2026-09-11
 
 - Reworked timetable preparation so all stops in the same BODS region share one parsed GTFS service index instead of independently scanning the regional `stop_times.txt` file.
 - Builds the shared index from the union of configured services for that region, then gives each stop a lightweight filtered view; ETA, matching and stop-view behaviour remain unchanged.
