@@ -9,15 +9,15 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigSubentry
 from homeassistant.const import EntityCategory, MATCH_ALL, UnitOfTime
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
 
 from . import BODSBusConfigEntry
 from .api import ServiceSpec
-from .const import CONF_LEGACY_ENTITY_IDS, DOMAIN, SUBENTRY_TYPE_STOP, VERSION
+from .const import CONF_LEGACY_ENTITY_IDS, SUBENTRY_TYPE_STOP
 from .coordinator import BODSBusCoordinator
+from .entity import stop_device_info
 
 PARALLEL_UPDATES = 0
 
@@ -33,7 +33,7 @@ class BODSBusBaseEntity(CoordinatorEntity[BODSBusCoordinator], SensorEntity):
         entry: BODSBusConfigEntry,
         subentry: ConfigSubentry,
         unique_suffix: str,
-        name: str,
+        translation_key: str,
     ) -> None:
         super().__init__(coordinator)
         self._entry = entry
@@ -46,29 +46,27 @@ class BODSBusBaseEntity(CoordinatorEntity[BODSBusCoordinator], SensorEntity):
                 f"{entry.entry_id}_{subentry.subentry_id}_{unique_suffix}"
             )
             self._device_identifier = f"{entry.entry_id}:{subentry.subentry_id}"
-        self._attr_name = name
+        self._attr_translation_key = translation_key
 
     @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_identifier)},
-            name=self._subentry.title,
-            manufacturer="UK Department for Transport",
-            model="BODS + GTFS bus ETA",
-            sw_version=VERSION,
-            configuration_url="https://data.bus-data.dft.gov.uk/",
-        )
+    def device_info(self):
+        """Return the monitored stop as a service device."""
+        return stop_device_info(self._subentry, self._device_identifier)
 
 
 class NextBusSensor(BODSBusBaseEntity):
-    _attr_icon = "mdi:bus"
     # The rich rolling timetable/vehicle attributes are intentionally available live
     # for dashboards and automations, but can exceed Recorder's 16 KiB attribute
     # limit at busy stops. They are transient data and are therefore not persisted.
     _unrecorded_attributes = frozenset({MATCH_ALL})
 
-    def __init__(self, coordinator, entry, subentry) -> None:
-        super().__init__(coordinator, entry, subentry, "next_bus", "Next bus")
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
+        super().__init__(coordinator, entry, subentry, "next_bus", "next_bus")
 
     @property
     def native_value(self):
@@ -94,12 +92,17 @@ class NextBusSensor(BODSBusBaseEntity):
 
 
 class NextBusMinutesSensor(BODSBusBaseEntity):
-    _attr_icon = "mdi:bus-clock"
+    _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
 
-    def __init__(self, coordinator, entry, subentry) -> None:
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
         super().__init__(
-            coordinator, entry, subentry, "next_bus_minutes", "Next bus minutes"
+            coordinator, entry, subentry, "next_bus_minutes", "next_bus_minutes"
         )
 
     @property
@@ -112,17 +115,15 @@ class NextBusTimestampSensor(BODSBusBaseEntity):
 
     def __init__(
         self,
-        coordinator,
-        entry,
-        subentry,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
         field: str,
         suffix: str,
-        name: str,
-        icon: str,
+        translation_key: str,
     ) -> None:
-        super().__init__(coordinator, entry, subentry, suffix, name)
+        super().__init__(coordinator, entry, subentry, suffix, translation_key)
         self._field = field
-        self._attr_icon = icon
 
     @property
     def native_value(self) -> datetime | None:
@@ -131,11 +132,16 @@ class NextBusTimestampSensor(BODSBusBaseEntity):
 
 
 class NextBusDelaySensor(BODSBusBaseEntity):
-    _attr_icon = "mdi:clock-alert-outline"
+    _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
 
-    def __init__(self, coordinator, entry, subentry) -> None:
-        super().__init__(coordinator, entry, subentry, "next_bus_delay", "Next bus delay")
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
+        super().__init__(coordinator, entry, subentry, "next_bus_delay", "next_bus_delay")
 
     @property
     def available(self) -> bool:
@@ -153,8 +159,16 @@ class NextBusDelaySensor(BODSBusBaseEntity):
 class NextBusTimingSensor(BODSBusBaseEntity):
     """Friendly live timing state for the next bus."""
 
-    def __init__(self, coordinator, entry, subentry) -> None:
-        super().__init__(coordinator, entry, subentry, "next_bus_timing", "Next bus timing")
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["early", "on_time", "late", "timetable"]
+
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
+        super().__init__(coordinator, entry, subentry, "next_bus_timing", "next_bus_timing")
 
     @property
     def native_value(self):
@@ -162,17 +176,6 @@ class NextBusTimingSensor(BODSBusBaseEntity):
         if not data.get("available"):
             return None
         return data.get("timing_status")
-
-    @property
-    def icon(self) -> str:
-        value = self.native_value
-        if value == "early":
-            return "mdi:clock-fast"
-        if value == "late":
-            return "mdi:clock-alert-outline"
-        if value == "on_time":
-            return "mdi:clock-check-outline"
-        return "mdi:calendar-clock"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -188,11 +191,16 @@ class NextBusTimingSensor(BODSBusBaseEntity):
 class LeaveInSensor(BODSBusBaseEntity):
     """Minutes remaining until the user should leave for the next bus."""
 
-    _attr_icon = "mdi:walk"
+    _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
 
-    def __init__(self, coordinator, entry, subentry) -> None:
-        super().__init__(coordinator, entry, subentry, "leave_in", "Leave in")
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
+        super().__init__(coordinator, entry, subentry, "leave_in", "leave_in")
 
     @property
     def native_value(self):
@@ -210,7 +218,7 @@ class LeaveInSensor(BODSBusBaseEntity):
 
 
 class ServiceSensor(BODSBusBaseEntity):
-    _attr_icon = "mdi:bus-clock"
+    _attr_device_class = SensorDeviceClass.DURATION
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
 
     def __init__(
@@ -222,12 +230,14 @@ class ServiceSensor(BODSBusBaseEntity):
         duplicate_route: bool,
     ) -> None:
         suffix = f"next_{slugify(service.operator_noc)}_{slugify(service.route)}"
-        name = (
-            f"Next {service.route} ({service.operator_noc})"
-            if duplicate_route
-            else f"Next {service.route}"
+        translation_key = (
+            "next_service_operator" if duplicate_route else "next_service"
         )
-        super().__init__(coordinator, entry, subentry, suffix, name)
+        super().__init__(coordinator, entry, subentry, suffix, translation_key)
+        self._attr_translation_placeholders = {
+            "route": service.route,
+            "operator": service.operator_noc,
+        }
         self._service = service
 
     @property
@@ -247,11 +257,20 @@ class DiagnosticSensor(BODSBusBaseEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def __init__(
-        self, coordinator, entry, subentry, key: str, name: str, icon: str
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+        key: str,
+        *,
+        enabled_default: bool = True,
     ) -> None:
-        super().__init__(coordinator, entry, subentry, key, name)
+        super().__init__(coordinator, entry, subentry, key, key)
         self._key = key
-        self._attr_icon = icon
+        self._attr_entity_registry_enabled_default = enabled_default
+        if key == "data_status":
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = ["ok", "degraded", "scheduled_only"]
 
     @property
     def native_value(self):
@@ -268,10 +287,14 @@ class DiagnosticSensor(BODSBusBaseEntity):
 class LastUpdateSensor(BODSBusBaseEntity):
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_icon = "mdi:update"
 
-    def __init__(self, coordinator, entry, subentry) -> None:
-        super().__init__(coordinator, entry, subentry, "last_update", "Last update")
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
+        super().__init__(coordinator, entry, subentry, "last_update", "last_update")
 
     @property
     def native_value(self) -> datetime | None:
@@ -293,8 +316,7 @@ def _entities_for_stop(
             subentry,
             "expected",
             "next_bus_expected",
-            "Next bus expected",
-            "mdi:clock-check-outline",
+            "next_bus_expected",
         ),
         NextBusTimestampSensor(
             coordinator,
@@ -302,8 +324,7 @@ def _entities_for_stop(
             subentry,
             "scheduled",
             "next_bus_scheduled",
-            "Next bus scheduled",
-            "mdi:clock-outline",
+            "next_bus_scheduled",
         ),
         NextBusDelaySensor(coordinator, entry, subentry),
         NextBusTimingSensor(coordinator, entry, subentry),
@@ -313,8 +334,7 @@ def _entities_for_stop(
             subentry,
             "leave_by",
             "leave_by",
-            "Leave by",
-            "mdi:walk",
+            "leave_by",
         ),
         LeaveInSensor(coordinator, entry, subentry),
     ]
@@ -339,8 +359,6 @@ def _entities_for_stop(
                 entry,
                 subentry,
                 "data_status",
-                "Data status",
-                "mdi:database-check-outline",
             ),
             LastUpdateSensor(coordinator, entry, subentry),
             DiagnosticSensor(
@@ -348,16 +366,14 @@ def _entities_for_stop(
                 entry,
                 subentry,
                 "live_vehicles",
-                "Live vehicles",
-                "mdi:bus-multiple",
+                enabled_default=False,
             ),
             DiagnosticSensor(
                 coordinator,
                 entry,
                 subentry,
                 "gtfs_matches",
-                "GTFS matches",
-                "mdi:link-variant",
+                enabled_default=False,
             ),
         ]
     )
