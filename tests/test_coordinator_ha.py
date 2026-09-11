@@ -191,7 +191,7 @@ async def test_dynamic_walking_invalid_states_fall_back(
         last_updated=now,
     )
 
-    with patch.object(hass.states, "get", return_value=fake):
+    with patch("homeassistant.core.StateMachine.get", return_value=fake):
         values = coordinator._walking_guidance_values(now)
 
     assert values[0] == 5
@@ -216,7 +216,7 @@ async def test_dynamic_walking_stale_state_falls_back(hass) -> None:
         last_updated=old,
     )
 
-    with patch.object(hass.states, "get", return_value=fake):
+    with patch("homeassistant.core.StateMachine.get", return_value=fake):
         values = coordinator._walking_guidance_values(now)
 
     assert values[1] == "static_fallback"
@@ -238,7 +238,7 @@ async def test_dynamic_walking_valid_state_rounds_up(hass) -> None:
         last_updated=now,
     )
 
-    with patch.object(hass.states, "get", return_value=fake):
+    with patch("homeassistant.core.StateMachine.get", return_value=fake):
         values = coordinator._walking_guidance_values(now)
 
     assert values == (7, "dynamic", 6.5, False, "ok")
