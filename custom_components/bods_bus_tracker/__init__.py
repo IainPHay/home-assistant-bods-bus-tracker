@@ -180,3 +180,24 @@ async def async_remove_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> 
         hass.config.path(CACHE_DIR),
         True,
     )
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: BODSBusConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Allow removal of bus-stop devices that no longer have a stop subentry."""
+    current_identifiers: set[str] = set()
+    for subentry in config_entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
+        if subentry.data.get(CONF_LEGACY_ENTITY_IDS):
+            current_identifiers.add(config_entry.entry_id)
+        else:
+            current_identifiers.add(
+                f"{config_entry.entry_id}:{subentry.subentry_id}"
+            )
+
+    return not any(
+        domain == DOMAIN and identifier in current_identifiers
+        for domain, identifier in device_entry.identifiers
+    )
