@@ -26,6 +26,7 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     SUBENTRY_TYPE_STOP,
+    WALKING_ISSUE_PREFIX,
 )
 from .api import ServiceSpec, parse_service_key
 from .coordinator import BODSBusCoordinator
@@ -33,7 +34,6 @@ from .gtfs import GTFSDownloadError, SharedGTFSRegionIndex
 from .live_feed import BODSLiveFeedClient
 
 _LOGGER = logging.getLogger(__name__)
-WALKING_ISSUE_PREFIX = "walking_time_entity_missing_"
 
 
 @dataclass(slots=True)
