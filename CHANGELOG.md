@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0-beta.3 — in development
+
+- Reworked timetable preparation so all stops in the same BODS region share one parsed GTFS service index instead of independently scanning the regional `stop_times.txt` file.
+- Builds the shared index from the union of configured services for that region, then gives each stop a lightweight filtered view; ETA, matching and stop-view behaviour remain unchanged.
+- Added a persistent, non-pickle JSON parsed-index cache keyed to the exact GTFS file fingerprint, service date and configured service set. Normal same-day Home Assistant restarts can therefore restore parsed trips from disk instead of rescanning the regional GTFS archive.
+- Added GTFS index diagnostics including initial/last source (`rebuilt`, `disk` or `memory`), preparation time, shared service/trip counts and generation number.
+- The first beta.3 startup may still need one full regional parse to create the persistent cache; subsequent restarts with unchanged GTFS/date/services should be substantially faster.
+
 ## 0.6.0-beta.2 — in development
 
 - Added optional per-stop **routed dynamic walking time** using a Home Assistant travel-time sensor while retaining the configured static walking time as a safe fallback.
