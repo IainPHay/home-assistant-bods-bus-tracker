@@ -160,5 +160,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> b
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> bool:
-    """Unload BODS Bus Tracker."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    """Unload BODS Bus Tracker and release account-level runtime state."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        await entry.runtime_data.live_feed.async_close()
+        entry.runtime_data.coordinators.clear()
+        entry.runtime_data.timetables.clear()
+    return unload_ok
