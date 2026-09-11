@@ -42,6 +42,7 @@ from .const import (
     MAX_LIVE_AGE_SECONDS,
     MAX_WALKING_TIME,
     STOP_VIEW_ARRIVALS,
+    WALKING_ISSUE_PREFIX,
 )
 from .gtfs import SharedGTFSRegionIndex
 from .live_feed import BODSLiveFeedClient, BODSLiveFeedResult
@@ -191,7 +192,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     @property
     def _walking_entity_issue_id(self) -> str:
         """Return the repair issue ID for this stop's routed walking source."""
-        return f"walking_time_entity_missing_{self.subentry.subentry_id}"
+        return f"{WALKING_ISSUE_PREFIX}{self.subentry.subentry_id}"
 
     def _clear_walking_entity_issue(self) -> None:
         """Remove an obsolete routed-walking repair issue."""
