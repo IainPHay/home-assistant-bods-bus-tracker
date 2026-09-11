@@ -25,6 +25,7 @@ from .api import (
 from .const import (
     CONF_API_KEY,
     CONF_DYNAMIC_WALKING_TIME,
+    CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SERVICES,
@@ -34,6 +35,7 @@ from .const import (
     CONF_WALKING_TIME,
     CONF_WALKING_TIME_ENTITY,
     DEFAULT_DYNAMIC_WALKING_TIME,
+    DEFAULT_MAX_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
     DEFAULT_STOP_VIEW,
@@ -41,7 +43,6 @@ from .const import (
     DYNAMIC_WALKING_STALE_SECONDS,
     LOCAL_TIME_ZONE,
     MAX_LIVE_AGE_SECONDS,
-    MAX_WALKING_TIME,
     STOP_VIEW_ARRIVALS,
     WALKING_ISSUE_PREFIX,
 )
@@ -86,6 +87,12 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
         self.walking_time_entity: str | None = (
             str(subentry.data.get(CONF_WALKING_TIME_ENTITY) or "").strip() or None
+        )
+        self.max_dynamic_walking_time: int = int(
+            subentry.data.get(
+                CONF_MAX_DYNAMIC_WALKING_TIME,
+                DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+            )
         )
         self.services: list[ServiceSpec] = [
             parse_service_key(value) for value in subentry.data[CONF_SERVICES]
@@ -308,7 +315,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         dynamic_minutes = normalise_dynamic_walking_minutes(
             state.state,
             state.attributes.get("unit_of_measurement"),
-            MAX_WALKING_TIME,
+            self.max_dynamic_walking_time,
         )
         if dynamic_minutes is None:
             return (
@@ -420,6 +427,9 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.walking_time_entity if self.dynamic_walking_time else None
             ),
             walking_dynamic_minutes=dynamic_minutes,
+            walking_max_dynamic_minutes=(
+                self.max_dynamic_walking_time if self.dynamic_walking_time else None
+            ),
             walking_fallback=walking_fallback,
             walking_source_status=source_status,
         )
