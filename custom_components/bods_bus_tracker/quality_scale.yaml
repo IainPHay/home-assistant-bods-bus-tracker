@@ -84,8 +84,8 @@ rules:
   icon-translations: done
   reconfiguration-flow: done
   repair-issues:
-    status: todo
-    comment: No repair issue is currently raised for an actionable persistent user problem.
+    status: done
+    comment: A self-clearing Repair is raised when a configured routed walking-time entity has been removed or renamed.
   stale-devices:
     status: done
     comment: Devices are scoped to stop subentries and orphaned stop devices can be removed from the device registry.
