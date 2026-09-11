@@ -24,8 +24,9 @@ from .const import (
     PLATFORMS,
     SUBENTRY_TYPE_STOP,
 )
+from .api import parse_service_key
 from .coordinator import BODSBusCoordinator
-from .gtfs import GTFSDownloadError
+from .gtfs import GTFSDownloadError, SharedGTFSRegionIndex
 from .live_feed import BODSLiveFeedClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class BODSBusRuntimeData:
 
     coordinators: dict[str, BODSBusCoordinator]
     live_feed: BODSLiveFeedClient
+    timetables: dict[str, SharedGTFSRegionIndex]
 
 
 type BODSBusConfigEntry = ConfigEntry[BODSBusRuntimeData]
@@ -117,8 +119,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> b
     coordinators: dict[str, BODSBusCoordinator] = {}
     live_feed = BODSLiveFeedClient(hass, entry.data[CONF_API_KEY])
 
+    region_services: dict[str, dict[str, object]] = {}
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
-        coordinator = BODSBusCoordinator(hass, entry, subentry, live_feed)
+        region = str(subentry.data[CONF_REGION])
+        services = region_services.setdefault(region, {})
+        for value in subentry.data[CONF_SERVICES]:
+            service = parse_service_key(value)
+            services[service.key] = service
+
+    timetables = {
+        region: SharedGTFSRegionIndex(hass, region, services.values())
+        for region, services in region_services.items()
+    }
+
+    for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
+        coordinator = BODSBusCoordinator(
+            hass,
+            entry,
+            subentry,
+            live_feed,
+            timetables[str(subentry.data[CONF_REGION])],
+        )
         try:
             await coordinator.async_prepare()
         except GTFSDownloadError as exc:
@@ -131,6 +152,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> b
     entry.runtime_data = BODSBusRuntimeData(
         coordinators=coordinators,
         live_feed=live_feed,
+        timetables=timetables,
     )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
