@@ -10,8 +10,9 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry, ConfigSubentry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import (
@@ -100,6 +101,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._gtfs_initial_source: str | None = None
         self._gtfs_initial_prepare_seconds: float | None = None
         self._last_live_health: str | None = None
+        self._walking_entity_missing_count = 0
         super().__init__(
             hass,
             _LOGGER,
@@ -186,12 +188,50 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 self.stop_name,
             )
 
+    @property
+    def _walking_entity_issue_id(self) -> str:
+        """Return the repair issue ID for this stop's routed walking source."""
+        return f"walking_time_entity_missing_{self.subentry.subentry_id}"
+
+    def _clear_walking_entity_issue(self) -> None:
+        """Remove an obsolete routed-walking repair issue."""
+        self._walking_entity_missing_count = 0
+        ir.async_delete_issue(
+            self.hass,
+            DOMAIN,
+            self._walking_entity_issue_id,
+        )
+
+    def _note_missing_walking_entity(self, entity_id: str) -> None:
+        """Create one actionable Repair for a persistently missing source entity."""
+        self._walking_entity_missing_count += 1
+        if (
+            self.hass.state is not CoreState.running
+            or self._walking_entity_missing_count < 2
+        ):
+            return
+
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            self._walking_entity_issue_id,
+            is_fixable=False,
+            is_persistent=False,
+            severity=ir.IssueSeverity.ERROR,
+            translation_key="walking_time_entity_missing",
+            translation_placeholders={
+                "entity_id": entity_id,
+                "stop": self.stop_name,
+            },
+        )
+
     def _walking_guidance_values(
         self, now: datetime
     ) -> tuple[int, str, float | None, bool, str]:
         """Resolve effective walking minutes without contacting routing providers."""
         static_minutes = max(0, int(self.walking_time))
         if not self.dynamic_walking_time:
+            self._clear_walking_entity_issue()
             return (
                 static_minutes,
                 "static" if static_minutes > 0 else "disabled",
@@ -202,6 +242,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         entity_id = self.walking_time_entity
         if not entity_id:
+            self._clear_walking_entity_issue()
             return (
                 static_minutes,
                 "static_fallback" if static_minutes > 0 else "disabled",
@@ -212,6 +253,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
         state = self.hass.states.get(entity_id)
         if state is None:
+            self._note_missing_walking_entity(entity_id)
             return (
                 static_minutes,
                 "static_fallback" if static_minutes > 0 else "disabled",
@@ -219,6 +261,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 True,
                 "missing",
             )
+        self._clear_walking_entity_issue()
         if state.state == "unknown":
             return (
                 static_minutes,
