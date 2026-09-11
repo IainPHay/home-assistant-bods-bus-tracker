@@ -1,11 +1,14 @@
 # Changelog
 
-## 0.6.0-beta.5 — in development
+## 0.6.0-beta.5 — 2026-09-11
 
 - Fixed a release-blocking Home Assistant reconfigure-flow timeout found during beta.4 testing.
 - Optimised single-stop GTFS service discovery by pre-filtering raw `stop_times.txt` lines for the target stop before invoking the CSV parser.
 - Preserves exact CSV column matching and the full set of services available at the stop; this is a performance optimisation only and does not restrict reconfiguration choices.
 - Added regression coverage for exact stop matching, quoted stop IDs and false-positive target text in other GTFS columns.
+- Live Home Assistant validation confirmed The Fairway reconfiguration now opens in about 7 seconds instead of timing out.
+- Completed the routed-walking missing-source Repair test: a deleted configured source falls back to the static walking time, raises the translated Repair, and self-clears when routed walking is disabled/corrected.
+- Full v0.6 beta history and stable-release criteria are recorded in [`V0.6_VALIDATION.md`](V0.6_VALIDATION.md).
 
 
 ## 0.6.0-beta.4 — 2026-09-11
