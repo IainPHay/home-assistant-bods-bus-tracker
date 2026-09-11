@@ -1,0 +1,102 @@
+rules:
+  # Bronze
+  action-setup:
+    status: exempt
+    comment: The integration does not register custom actions.
+  appropriate-polling:
+    status: done
+    comment: Live BODS requests are shared per operator, cached, de-duplicated and globally rate limited.
+  brands: done
+  common-modules: done
+  config-flow-test-coverage:
+    status: todo
+    comment: Full Home Assistant-native config, subentry and reauthentication flow coverage is still to be added.
+  config-flow: done
+  dependency-transparency:
+    status: done
+    comment: The integration has no third-party Python package requirements.
+  docs-actions:
+    status: exempt
+    comment: The integration does not provide custom actions.
+  docs-conditions:
+    status: exempt
+    comment: The integration does not provide custom conditions.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions: done
+  docs-triggers:
+    status: exempt
+    comment: The integration does not provide custom triggers.
+  entity-event-setup:
+    status: exempt
+    comment: Entities do not subscribe directly to external events.
+  entity-unique-id: done
+  has-entity-name: done
+  runtime-data: done
+  test-before-configure: done
+  test-before-setup: done
+  unique-config-entry: done
+
+  # Silver
+  action-exceptions:
+    status: exempt
+    comment: The integration has no service actions or controllable entity actions.
+  config-entry-unloading: done
+  docs-configuration-parameters: done
+  docs-installation-parameters: done
+  entity-unavailable: done
+  integration-owner: done
+  log-when-unavailable: done
+  parallel-updates: done
+  reauthentication-flow: done
+  test-coverage:
+    status: todo
+    comment: Coverage enforcement above 95 percent is not yet in CI.
+
+  # Gold
+  devices: done
+  diagnostics: done
+  discovery:
+    status: exempt
+    comment: BODS is a cloud data service and user-selected bus stops are not discoverable through Home Assistant network discovery protocols.
+  discovery-update-info:
+    status: exempt
+    comment: There is no discoverable network address or connection information to update.
+  docs-data-update: done
+  docs-examples: done
+  docs-known-limitations: done
+  docs-supported-devices:
+    status: exempt
+    comment: The integration does not integrate physical devices; configured bus stops are logical service devices.
+  docs-supported-functions: done
+  docs-troubleshooting: done
+  docs-use-cases: done
+  dynamic-devices:
+    status: done
+    comment: Bus-stop subentries and their devices can be added after the account integration is set up.
+  entity-category: done
+  entity-device-class: done
+  entity-disabled-by-default:
+    status: done
+    comment: Lower-value high-frequency diagnostic counters are disabled by default.
+  entity-translations: done
+  exception-translations: done
+  icon-translations: done
+  reconfiguration-flow: done
+  repair-issues:
+    status: todo
+    comment: No repair issue is currently raised for an actionable persistent user problem.
+  stale-devices:
+    status: done
+    comment: Devices are scoped to stop subentries and orphaned stop devices can be removed from the device registry.
+
+  # Platinum
+  async-dependency:
+    status: done
+    comment: There is no external client dependency; network I/O is asynchronous and CPU/file parsing is moved to the executor.
+  inject-websession:
+    status: done
+    comment: HTTP calls use Home Assistant's shared aiohttp client session.
+  strict-typing:
+    status: todo
+    comment: The integration is partially typed but has not yet passed a strict mypy-style typing gate.
