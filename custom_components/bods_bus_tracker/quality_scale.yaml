@@ -51,7 +51,7 @@ rules:
   reauthentication-flow: done
   test-coverage:
     status: done
-    comment: The Home Assistant-native suite currently measures 97 percent and CI fails below 95 percent.
+    comment: The Home Assistant-native suite currently measures 96 percent and CI fails below 95 percent.
 
   # Gold
   devices: done
@@ -98,5 +98,5 @@ rules:
     status: done
     comment: HTTP calls use Home Assistant's shared aiohttp client session.
   strict-typing:
-    status: todo
-    comment: The integration is partially typed but has not yet passed a strict mypy-style typing gate.
+    status: done
+    comment: All integration source files pass the repository's Home Assistant-style strict mypy gate.
