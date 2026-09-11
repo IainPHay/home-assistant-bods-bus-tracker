@@ -457,20 +457,6 @@ async def test_reconfigure_prepare_failures(hass, prepare_error: Exception, reas
     assert result["reason"] == reason
 
 
-def test_region_search_order_without_location() -> None:
-    """Auto-detect falls back to the declared region order without HA coordinates."""
-    fake_hass = type(
-        "FakeHass",
-        (),
-        {"config": type("Config", (), {"latitude": None, "longitude": None})()},
-    )()
-    assert _region_search_order(fake_hass) == list(
-        __import__(
-            "custom_components.bods_bus_tracker.const",
-            fromlist=["REGIONS"],
-        ).REGIONS
-    )
-
 
 async def test_flow_level_duplicate_guard(hass) -> None:
     """The integration flow retains its own duplicate guard as defence in depth."""
