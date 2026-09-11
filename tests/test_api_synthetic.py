@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
 import zipfile
@@ -346,12 +347,7 @@ def test_fuzzy_matching_outcomes() -> None:
     assert kind == "fuzzy"
 
     unmatched, kind = fuzzy_match_trip(
-        LiveVehicle(
-            **{
-                **fuzzy_vehicle.__dict__,
-                "route": "X99",
-            }
-        ),
+        replace(fuzzy_vehicle, route="X99"),
         [trip],
         DAY,
     )
