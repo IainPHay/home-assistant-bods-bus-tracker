@@ -19,6 +19,8 @@ from .api import ServiceSpec
 from .const import CONF_LEGACY_ENTITY_IDS, DOMAIN, SUBENTRY_TYPE_STOP, VERSION
 from .coordinator import BODSBusCoordinator
 
+PARALLEL_UPDATES = 0
+
 
 class BODSBusBaseEntity(CoordinatorEntity[BODSBusCoordinator], SensorEntity):
     """Base BODS Bus Tracker sensor."""
