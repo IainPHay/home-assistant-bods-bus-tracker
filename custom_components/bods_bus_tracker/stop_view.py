@@ -137,6 +137,12 @@ def _first_for_service(
     return next((row for row in rows if row.get("service_key") == service.key), None)
 
 
+def _within_five_minutes(row: dict[str, object]) -> bool:
+    """Return whether a candidate is within the terminus approach window."""
+    minutes = row.get("minutes")
+    return isinstance(minutes, (int, float)) and float(minutes) <= 5
+
+
 def apply_stop_view(
     snapshot: dict[str, Any],
     trips: list[Trip],
@@ -212,8 +218,7 @@ def apply_stop_view(
         if row.get("stop_role") == "destination"
         and row.get("realtime")
         and not row.get("at_stop")
-        and isinstance(row.get("minutes"), (int, float))
-        and float(row["minutes"]) <= 5
+        and _within_five_minutes(row)
     ]
 
     profile = _stop_profile(trips, target_stop)
