@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0-beta.6 — in development
+## 0.6.0-beta.6 — 2026-09-11
 
 - Made the routed-walking safety ceiling configurable per bus stop instead of hard-coding 120 minutes.
 - Existing stops remain backward compatible and default to **120 minutes** until reconfigured.
