@@ -82,3 +82,17 @@ No person/device coordinates are copied into BODS Bus Tracker diagnostics or wal
 ## Terminus behaviour
 
 For **Arrivals and departures**, dynamic walking remains tied to the next boardable departure, exactly like static walking time. **Arrivals** mode continues to disable leave guidance because there is no boardable departure selected.
+
+## Repairs and missing source entities
+
+Temporary routing-provider problems are treated differently from a deleted/renamed source entity.
+
+- `unknown`, `unavailable`, stale or invalid provider states use the configured static fallback and do **not** create a Repair.
+- If the configured travel-time entity itself no longer exists, BODS Bus Tracker uses the static fallback and raises the translated Home Assistant Repair **Dynamic walking-time sensor is missing**.
+- The Repair self-clears when the source is corrected or routed dynamic walking is disabled.
+
+This behaviour was validated in real Home Assistant during the beta.5 test cycle.
+
+## v0.6 live validation
+
+The complete automated and real Home Assistant validation record, including the remaining HERE provider checks required before stable v0.6.0, is maintained in [`V0.6_VALIDATION.md`](V0.6_VALIDATION.md).
