@@ -679,11 +679,11 @@ def project_to_segment(
 def estimate_delay_and_progress(
     vehicle: LiveVehicle, trip: Trip, service_date: date
 ) -> tuple[float, float, float] | None:
-    if len(trip.stops) < 2:
+    if len(scheduled_trip.stops) < 2:
         return None
 
     options: list[tuple[float, float, int, float]] = []
-    for index in range(len(trip.stops) - 1):
+    for index in range(len(scheduled_trip.stops) - 1):
         distance, fraction = project_to_segment(
             vehicle.lat, vehicle.lon, trip.stops[index], trip.stops[index + 1]
         )
@@ -739,8 +739,8 @@ def calculate_candidates(
     service_date = now.astimezone(LOCAL_TZ).date()
 
     by_signature: dict[tuple[str, str, str, str, str, str], list[Trip]] = defaultdict(list)
-    for trip in trips:
-        by_signature[static_signature(trip)].append(trip)
+    for indexed_trip in trips:
+        by_signature[static_signature(indexed_trip)].append(indexed_trip)
 
     live_by_trip: dict[str, tuple[LiveVehicle, float, float, float]] = {}
     match_stats = {
@@ -758,38 +758,44 @@ def calculate_candidates(
             continue
 
         matches = by_signature.get(live_signature(vehicle), [])
-        trip: Trip | None = None
+        matched_trip: Trip | None = None
         if len(matches) == 1:
-            trip = matches[0]
+            matched_trip = matches[0]
             match_stats["matched_exact"] += 1
         elif len(matches) > 1:
             match_stats["ambiguous"] += 1
             continue
         else:
-            trip, kind = fuzzy_match_trip(vehicle, trips, service_date)
+            matched_trip, kind = fuzzy_match_trip(vehicle, trips, service_date)
             if kind == "fuzzy":
                 match_stats["matched_fuzzy"] += 1
             elif kind == "ambiguous":
                 match_stats["ambiguous"] += 1
             else:
                 match_stats["unmatched"] += 1
-            if trip is None:
+            if matched_trip is None:
                 continue
 
-        progress = estimate_delay_and_progress(vehicle, trip, service_date)
+        assert matched_trip is not None
+        progress = estimate_delay_and_progress(vehicle, matched_trip, service_date)
         if progress is None:
             continue
-        delay, route_progress, distance = progress
-        live_by_trip[trip.trip_id] = (vehicle, delay, route_progress, distance)
+        delay_estimate, route_progress, distance = progress
+        live_by_trip[matched_trip.trip_id] = (
+            vehicle,
+            delay_estimate,
+            route_progress,
+            distance,
+        )
 
     candidates: list[Candidate] = []
-    for trip in trips:
-        target = trip.target(target_stop)
+    for scheduled_trip in trips:
+        target = scheduled_trip.target(target_stop)
         if target is None:
             continue
-        target_index = trip.stops.index(target)
+        target_index = scheduled_trip.stops.index(target)
         target_is_origin = target_index == 0
-        target_is_destination = target_index == len(trip.stops) - 1
+        target_is_destination = target_index == len(scheduled_trip.stops) - 1
         stop_role = (
             "origin"
             if target_is_origin
@@ -811,7 +817,7 @@ def calculate_candidates(
         longitude: float | None = None
         distance_to_route: float | None = None
 
-        live = live_by_trip.get(trip.trip_id)
+        live = live_by_trip.get(scheduled_trip.trip_id)
         if live:
             vehicle, delay_est, route_progress, distance = live
             if route_progress < target_index + 0.05:
@@ -853,12 +859,12 @@ def calculate_candidates(
 
         candidates.append(
             Candidate(
-                service_key=make_service_key(trip.operator_noc, trip.route),
-                operator_noc=trip.operator_noc,
-                operator_name=trip.operator_name,
-                route=trip.route,
-                trip_id=trip.trip_id,
-                destination=trip.headsign or trip.destination.name,
+                service_key=make_service_key(scheduled_trip.operator_noc, scheduled_trip.route),
+                operator_noc=scheduled_trip.operator_noc,
+                operator_name=scheduled_trip.operator_name,
+                route=scheduled_trip.route,
+                trip_id=scheduled_trip.trip_id,
+                destination=scheduled_trip.headsign or scheduled_trip.destination.name,
                 scheduled=scheduled,
                 expected=expected,
                 realtime=realtime,
