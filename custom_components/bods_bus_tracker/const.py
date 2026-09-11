@@ -73,3 +73,4 @@ REGION_CENTRES: dict[str, tuple[float, float]] = {
 CACHE_DIR = ".bods_bus_tracker_cache"
 LOCAL_TIME_ZONE = "Europe/London"
 SERVICE_SEPARATOR = "|"
+WALKING_ISSUE_PREFIX = "walking_time_entity_missing_"
