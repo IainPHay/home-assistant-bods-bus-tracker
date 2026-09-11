@@ -9,7 +9,7 @@ from aiohttp import ClientResponseError
 import pytest
 
 from homeassistant.config_entries import ConfigSubentryData, SOURCE_RECONFIGURE, SOURCE_USER
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.bods_bus_tracker.api import ServiceChoice, StopChoice, StopDiscovery
@@ -349,13 +349,13 @@ async def test_invalid_stop_selection_stays_on_form(hass) -> None:
             {CONF_REGION: "north_east", CONF_STOP_SEARCH: "Bus"},
         )
 
-    result2 = await hass.config_entries.subentries.async_configure(
-        result["flow_id"],
-        {CONF_STOP_SELECTION: "not-a-stop"},
-    )
-
-    assert result2["type"] is FlowResultType.FORM
-    assert result2["errors"] == {CONF_STOP_SELECTION: "stop_selection_invalid"}
+    # Home Assistant's select schema rejects values that are not one of the
+    # presented options before the integration handler is called.
+    with pytest.raises(InvalidData):
+        await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {CONF_STOP_SELECTION: "not-a-stop"},
+        )
 
 
 async def test_duplicate_stop_aborts(hass) -> None:
@@ -397,6 +397,10 @@ async def test_reconfigure_stop(hass) -> None:
             "custom_components.bods_bus_tracker.config_flow.discover_stop_services",
             return_value=DISCOVERY,
         ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow._async_validate_api_key",
+            new=AsyncMock(return_value=None),
+        ),
     ):
         result = await hass.config_entries.subentries.async_init(
             (entry.entry_id, SUBENTRY_TYPE_STOP),
@@ -406,13 +410,9 @@ async def test_reconfigure_stop(hass) -> None:
             },
         )
 
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "reconfigure"
+        assert result["type"] is FlowResultType.FORM
+        assert result["step_id"] == "reconfigure"
 
-    with patch(
-        "custom_components.bods_bus_tracker.config_flow._async_validate_api_key",
-        new=AsyncMock(return_value=None),
-    ):
         result2 = await hass.config_entries.subentries.async_configure(
             result["flow_id"],
             {
