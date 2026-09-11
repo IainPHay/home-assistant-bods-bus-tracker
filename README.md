@@ -46,7 +46,7 @@ This real Home Assistant example from Haymarket Bus Station shows simultaneous *
 - Terminus-aware live states including **At stand**, **Arrived**, and **Approaching** when BODS/GTFS data justify them.
 - Arrival rows expose the previous GTFS stop for clearer local context at termini.
 - Configurable live polling interval per stop.
-- Optional per-stop walking time with **Leave by**, **Leave in** and automation-friendly **Leave now** entities.
+- Optional per-stop walking guidance with **Leave by**, **Leave in** and automation-friendly **Leave now** entities, using either a static fallback or a routed Home Assistant travel-time sensor.
 - Rich live dashboard attributes are kept out of Recorder history to avoid oversized-attribute warnings at busy stops.
 - Built-in diagnostics and downloadable Home Assistant diagnostics with API keys redacted.
 - Two generic stock Home Assistant Markdown dashboard cards are included: one for ordinary departures and one for termini.
@@ -59,6 +59,8 @@ This real Home Assistant example from Haymarket Bus Station shows simultaneous *
 - The target timetable/service must be published through BODS.
 
 BODS covers bus services in **England**. Availability and completeness of live vehicle data depend on what each operator publishes.
+
+BODS Bus Tracker does not integrate physical devices. Each configured boarding point is represented as a logical Home Assistant service device containing the entities for that monitored stop.
 
 ## Get a BODS API key
 
@@ -117,8 +119,9 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
    - **Departures** for an ordinary boarding stop;
    - **Arrivals** for an arrival-only view;
    - **Arrivals and departures** for a terminus or bus station where the distinction is useful.
-8. Optionally enter the walking time from your usual starting point to this stop. Set it to **0** to disable leave guidance.
-9. Choose the live polling interval. **30 seconds** is recommended.
+8. Optionally enter the **Static walking time to stop**. This remains the safe fallback for leave guidance.
+9. To use routed walking time, enable **Use routed dynamic walking time** and select a Home Assistant duration sensor created by a routing integration such as HERE Travel Time or Google Maps Travel Time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
+10. Choose the live polling interval. **30 seconds** is recommended.
 
 ### Supported regional timetable feeds
 
@@ -155,9 +158,20 @@ Use the stop subentry's **Reconfigure** action to change:
 - selected services;
 - stop view;
 - polling interval;
-- walking time to the stop.
+- static walking time to the stop;
+- optional routed dynamic walking time and its Home Assistant travel-time sensor.
 
 To track a different physical boarding point, add the new stop and remove the old one.
+
+## Use cases
+
+Typical ways to use BODS Bus Tracker include:
+
+- **Local departure board** — show the next buses for a nearby boarding point, with live/timetable status and per-route departure times.
+- **Leave-now automation** — use **Leave by**, **Leave in** and **Leave now** to trigger a phone, Alexa or dashboard notification when it is time to walk to the stop.
+- **Dynamic walking guidance** — combine a Home Assistant travel-time integration with a `person` or `device_tracker` so walking time changes with the user's current location while retaining a static fallback.
+- **Terminus monitoring** — use **Arrivals and departures** to distinguish incoming buses, approaching arrivals and independently matched outbound vehicles at stand.
+- **Service health monitoring** — use **Data status**, **Last update** and downloadable diagnostics to distinguish live BODS problems from timetable fallback.
 
 ## Stop views
 
@@ -320,13 +334,18 @@ Replace **both** occurrences with the native **Next bus** entity ID for the stop
 
 The full generic code is kept in the two YAML files above so it can be copied directly into a Home Assistant **Markdown** card without hard-coded route numbers or stop names.
 
-## Caching and network behaviour
+## Data updates and network behaviour
 
-- Live data defaults to a **30-second polling interval per stop**.
-- Regional GTFS is cached under `.bods_bus_tracker_cache/` inside the Home Assistant config directory.
-- GTFS is refreshed approximately every 24 hours.
-- Multiple stops in the same BODS region share the cached timetable file.
-- The integration communicates with Department for Transport BODS endpoints over the internet.
+BODS Bus Tracker is a polling integration, but it deliberately avoids making one upstream BODS request for every route and stop.
+
+- Each stop has a configurable coordinator interval; **30 seconds** is recommended.
+- Stops sharing an operator reuse one shared operator-filtered BODS SIRI-VM response.
+- Successful and failed operator results are cached for **15 seconds** and concurrent requests for the same operator are de-duplicated.
+- Real upstream BODS requests are serialised with at least **6 seconds** between request starts, providing margin over the published five-second consumer guidance.
+- If live BODS data are temporarily unavailable, timetable data remain usable and the integration reports `degraded` or `scheduled_only` instead of repeatedly failing the whole integration.
+- Regional GTFS ZIP files are cached under `.bods_bus_tracker_cache/` inside the Home Assistant configuration directory and normally refreshed about every 24 hours.
+- Stops in the same region share one parsed GTFS index. A date/feed/service-aware JSON index cache allows normal same-day Home Assistant restarts to avoid rescanning the regional `stop_times.txt` file.
+- Routed dynamic walking time is read from an existing Home Assistant duration sensor; BODS Bus Tracker does not poll HERE, Google or another routing provider itself.
 
 ## Privacy and data handling
 
@@ -378,7 +397,19 @@ Potential future work includes:
 - historical route-segment travel-time learning;
 - optional traffic/roadworks anomaly flags;
 - wider operator/region regression tests;
-- an optional **dynamic walking time** calculated from a Home Assistant `person` / `device_tracker` location and/or Home Assistant zones, alongside the existing static per-stop walking time.
+
+## Removing the integration
+
+To stop monitoring only one boarding point, open **Settings → Devices & services → BODS Bus Tracker** and remove that **Bus stop** subentry. The other configured stops continue to use the shared BODS account.
+
+To remove BODS Bus Tracker completely:
+
+1. Open **Settings → Devices & services → BODS Bus Tracker**.
+2. Use the integration menu to delete the BODS Bus Tracker config entry.
+3. Home Assistant unloads the sensor platforms, cancels outstanding BODS live-feed work and removes the integration's persistent GTFS/index cache.
+4. If you installed the custom integration through HACS and no longer want the code installed, remove **BODS Bus Tracker** from HACS afterwards.
+
+Removing the Home Assistant config entry does not revoke or delete the API key from your BODS account.
 
 ## Reporting problems
 
