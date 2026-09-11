@@ -181,6 +181,8 @@ A ready-to-import Home Assistant automation blueprint is included for the most c
 
 The blueprint is intentionally generic: it can call a mobile notification, Alexa announcement, script or other Home Assistant action without hard-coding a notification service.
 
+For the complete v0.6 beta validation history and stable-release criteria, see [`V0.6_VALIDATION.md`](V0.6_VALIDATION.md).
+
 ## Stop views
 
 ### Departures
