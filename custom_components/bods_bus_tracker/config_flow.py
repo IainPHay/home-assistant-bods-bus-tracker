@@ -68,8 +68,21 @@ from .const import (
     VERSION,
 )
 from .gtfs import GTFSDownloadError, async_ensure_gtfs
+from .live_feed_model import classify_bods_http_status
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _config_error_from_http_status(status: int) -> str:
+    """Map a BODS HTTP response to a user-facing config-flow error."""
+    result = classify_bods_http_status(status)
+    if result == "authentication_failed":
+        return "invalid_auth"
+    if result == "access_forbidden":
+        return "access_forbidden"
+    if result == "rate_limited":
+        return "rate_limited"
+    return "cannot_connect"
 
 
 async def _async_validate_api_key_generic(hass: HomeAssistant, api_key: str) -> None:
@@ -86,8 +99,7 @@ async def _async_validate_api_key_generic(hass: HomeAssistant, api_key: str) -> 
         timeout=ClientTimeout(total=20),
         headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
     ) as response:
-        if response.status in (401, 403) or response.status == 429 or response.status >= 500:
-            response.raise_for_status()
+        response.raise_for_status()
         await response.read()
 
 
@@ -232,9 +244,7 @@ class BODSBusTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
             try:
                 await _async_validate_api_key_generic(self.hass, api_key)
             except ClientResponseError as exc:
-                errors["base"] = (
-                    "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
-                )
+                errors["base"] = _config_error_from_http_status(exc.status)
             except (ClientError, TimeoutError):
                 errors["base"] = "cannot_connect"
             except Exception:
@@ -301,9 +311,7 @@ class BODSBusTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
             try:
                 await _async_validate_api_key_generic(self.hass, api_key)
             except ClientResponseError as exc:
-                errors["base"] = (
-                    "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
-                )
+                errors["base"] = _config_error_from_http_status(exc.status)
             except (ClientError, TimeoutError):
                 errors["base"] = "cannot_connect"
             except Exception:
@@ -502,11 +510,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         self.hass, entry.data[CONF_API_KEY], selected[0]
                     )
                 except ClientResponseError as exc:
-                    errors["base"] = (
-                        "invalid_auth"
-                        if exc.status in (401, 403)
-                        else "cannot_connect"
-                    )
+                    errors["base"] = _config_error_from_http_status(exc.status)
                 except (ClientError, TimeoutError):
                     errors["base"] = "cannot_connect"
                 except Exception:
@@ -638,11 +642,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         self.hass, entry.data[CONF_API_KEY], selected[0]
                     )
                 except ClientResponseError as exc:
-                    errors["base"] = (
-                        "invalid_auth"
-                        if exc.status in (401, 403)
-                        else "cannot_connect"
-                    )
+                    errors["base"] = _config_error_from_http_status(exc.status)
                 except (ClientError, TimeoutError):
                     errors["base"] = "cannot_connect"
                 except Exception:
