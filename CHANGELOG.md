@@ -33,7 +33,7 @@
 - Added GTFS index diagnostics including initial/last source (`rebuilt`, `disk` or `memory`), preparation time, shared service/trip counts and generation number.
 - The first beta.3 startup may still need one full regional parse to create the persistent cache; subsequent restarts with unchanged GTFS/date/services should be substantially faster.
 
-## 0.6.0-beta.2 — in development
+## 0.6.0-beta.2 — 2026-09-11
 
 - Added optional per-stop **routed dynamic walking time** using a Home Assistant travel-time sensor while retaining the configured static walking time as a safe fallback.
 - Kept routing provider-neutral: BODS Bus Tracker consumes an existing Home Assistant duration sensor rather than storing HERE/Google credentials or calling routing providers directly.
