@@ -122,5 +122,67 @@
         "unknown": "Unexpected error. Check the Home Assistant log for details."
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "next_bus": {
+        "name": "Next bus"
+      },
+      "next_bus_minutes": {
+        "name": "Next bus minutes"
+      },
+      "next_bus_expected": {
+        "name": "Next bus expected"
+      },
+      "next_bus_scheduled": {
+        "name": "Next bus scheduled"
+      },
+      "next_bus_delay": {
+        "name": "Next bus delay"
+      },
+      "next_bus_timing": {
+        "name": "Next bus timing",
+        "state": {
+          "early": "Early",
+          "on_time": "On time",
+          "late": "Late",
+          "timetable": "Timetable"
+        }
+      },
+      "leave_by": {
+        "name": "Leave by"
+      },
+      "leave_in": {
+        "name": "Leave in"
+      },
+      "next_service": {
+        "name": "Next {route}"
+      },
+      "next_service_operator": {
+        "name": "Next {route} ({operator})"
+      },
+      "data_status": {
+        "name": "Data status",
+        "state": {
+          "ok": "OK",
+          "degraded": "Degraded",
+          "scheduled_only": "Scheduled only"
+        }
+      },
+      "last_update": {
+        "name": "Last update"
+      },
+      "live_vehicles": {
+        "name": "Live vehicles"
+      },
+      "gtfs_matches": {
+        "name": "GTFS matches"
+      }
+    },
+    "binary_sensor": {
+      "leave_now": {
+        "name": "Leave now"
+      }
+    }
   }
 }
