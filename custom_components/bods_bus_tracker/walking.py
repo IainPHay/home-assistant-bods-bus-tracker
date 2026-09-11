@@ -8,7 +8,7 @@ from typing import Any
 
 
 def normalise_dynamic_walking_minutes(
-    value: object,
+    value: str | int | float | None,
     unit: str | None,
     maximum_minutes: int,
 ) -> float | None:
