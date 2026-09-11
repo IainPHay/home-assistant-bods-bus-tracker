@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date, datetime, timedelta
+from io import BytesIO
 from pathlib import Path
 import zipfile
 from zoneinfo import ZoneInfo
@@ -12,6 +13,7 @@ import pytest
 
 from custom_components.bods_bus_tracker.api import (
     LiveVehicle,
+    _calling_trip_ids_for_stop,
     ServiceSpec,
     StopTime,
     Trip,
@@ -140,6 +142,32 @@ def test_validate_and_search_gtfs(gtfs: Path, tmp_path: Path) -> None:
 
     assert search_stops(gtfs, "") == ()
     assert all(result.stop_id != "BAD" for result in search_stops(gtfs, "Bad"))
+
+
+def test_calling_trip_ids_for_stop_prefilters_raw_gtfs_lines() -> None:
+    """Fast stop filtering preserves exact CSV column matching."""
+    payload = b"""trip_id,arrival_time,departure_time,stop_id,stop_sequence
+T1,10:00:00,10:00:00,3100Z199842,1
+T2,10:05:00,10:05:00,OTHER,2
+3100Z199842_TRIP,10:10:00,10:10:00,OTHER,3
+T3,10:15:00,10:15:00,"3100Z199842",4
+UNKNOWN,10:20:00,10:20:00,3100Z199842,5
+"""
+
+    matches = _calling_trip_ids_for_stop(
+        BytesIO(payload),
+        "3100Z199842",
+        {"T1", "T2", "T3"},
+    )
+
+    assert matches == {"T1", "T3"}
+
+    missing_columns = BytesIO(b"trip_id,arrival_time\nT1,10:00:00\n")
+    assert _calling_trip_ids_for_stop(
+        missing_columns,
+        "3100Z199842",
+        {"T1"},
+    ) == set()
 
 
 def test_discover_services_and_calendars(gtfs: Path) -> None:
