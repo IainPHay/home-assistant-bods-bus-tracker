@@ -14,6 +14,8 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.bods_bus_tracker.api import ServiceChoice, StopChoice, StopDiscovery
 from custom_components.bods_bus_tracker.config_flow import (
+    BODSBusTrackerConfigFlow,
+    BODSStopSubentryFlow,
     _async_auto_detect_stop,
     _async_validate_api_key,
     _async_validate_api_key_generic,
@@ -453,3 +455,274 @@ async def test_reconfigure_prepare_failures(hass, prepare_error: Exception, reas
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == reason
+
+
+def test_region_search_order_without_location() -> None:
+    """Auto-detect falls back to the declared region order without HA coordinates."""
+    fake_hass = type(
+        "FakeHass",
+        (),
+        {"config": type("Config", (), {"latitude": None, "longitude": None})()},
+    )()
+    assert _region_search_order(fake_hass) == list(
+        __import__(
+            "custom_components.bods_bus_tracker.const",
+            fromlist=["REGIONS"],
+        ).REGIONS
+    )
+
+
+async def test_flow_level_duplicate_guard(hass) -> None:
+    """The integration flow retains its own duplicate guard as defence in depth."""
+    entry = _entry()
+    entry.add_to_hass(hass)
+
+    flow = BODSBusTrackerConfigFlow()
+    flow.hass = hass
+    flow.context = {"source": SOURCE_USER}
+
+    result = await flow.async_step_user()
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "account_already_configured"
+
+
+@pytest.mark.parametrize(
+    ("auto_result", "prepare_error", "expected"),
+    [
+        (RuntimeError("boom"), None, "unknown"),
+        (None, None, "stop_not_found_all_regions"),
+        (("north_east", STOP), GTFSDownloadError("bad"), "gtfs_download_failed"),
+        (("north_east", STOP), RuntimeError("boom"), "unknown"),
+    ],
+)
+async def test_auto_detect_failure_branches(
+    hass, auto_result, prepare_error, expected: str
+) -> None:
+    """Auto-detection reports each discovery/preparation failure distinctly."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="BODS Bus Tracker",
+        data={CONF_API_KEY: "key"},
+        version=2,
+    )
+    result = await _start_stop(hass, entry)
+
+    auto_mock = (
+        AsyncMock(side_effect=auto_result)
+        if isinstance(auto_result, Exception)
+        else AsyncMock(return_value=auto_result)
+    )
+
+    prepare_patch = patch(
+        "custom_components.bods_bus_tracker.config_flow.BODSStopSubentryFlow._async_prepare_stop",
+        new=AsyncMock(side_effect=prepare_error),
+    )
+    with (
+        patch(
+            "custom_components.bods_bus_tracker.config_flow._async_auto_detect_stop",
+            new=auto_mock,
+        ),
+        prepare_patch,
+    ):
+        result2 = await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {CONF_REGION: AUTO_REGION, CONF_STOP_SEARCH: STOP.stop_id},
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    if expected == "stop_not_found_all_regions":
+        assert result2["errors"] == {CONF_STOP_SEARCH: expected}
+    else:
+        assert result2["errors"] == {"base": expected}
+
+
+async def test_single_search_result_prepare_exception(hass) -> None:
+    """An unexpected stop-preparation failure remains inside the flow."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="BODS Bus Tracker",
+        data={CONF_API_KEY: "key"},
+        version=2,
+    )
+    result = await _start_stop(hass, entry)
+
+    with (
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.async_ensure_gtfs",
+            new=AsyncMock(return_value=Path("/tmp/ne.zip")),
+        ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.search_stops",
+            return_value=(STOP,),
+        ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.BODSStopSubentryFlow._async_prepare_stop",
+            new=AsyncMock(side_effect=RuntimeError("boom")),
+        ),
+    ):
+        result2 = await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {CONF_REGION: "north_east", CONF_STOP_SEARCH: STOP.stop_id},
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["errors"] == {"base": "unknown"}
+
+
+async def test_stop_select_internal_invalid_guard(hass) -> None:
+    """The handler also protects against stale selection data if called directly."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="BODS Bus Tracker",
+        data={CONF_API_KEY: "key"},
+        version=2,
+    )
+    entry.add_to_hass(hass)
+
+    flow = BODSStopSubentryFlow()
+    flow.hass = hass
+    flow.context = {
+        "source": SOURCE_USER,
+        "entry_id": entry.entry_id,
+    }
+    flow._data[CONF_REGION] = "north_east"
+    flow._stop_results = (STOP,)
+
+    result = await flow.async_step_stop_select(
+        {CONF_STOP_SELECTION: "not-present"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_STOP_SELECTION: "stop_selection_invalid"}
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (GTFSDownloadError("bad"), "gtfs_download_failed"),
+        (RuntimeError("boom"), "unknown"),
+    ],
+)
+async def test_stop_selection_prepare_failures(
+    hass, error: Exception, expected: str
+) -> None:
+    """Selecting a valid listed stop handles preparation failures cleanly."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="BODS Bus Tracker",
+        data={CONF_API_KEY: "key"},
+        version=2,
+    )
+    result = await _start_stop(hass, entry)
+
+    with (
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.async_ensure_gtfs",
+            new=AsyncMock(return_value=Path("/tmp/ne.zip")),
+        ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.search_stops",
+            return_value=(STOP, StopChoice("OTHER", "", "Other", 55.0, -1.0)),
+        ),
+    ):
+        result = await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {CONF_REGION: "north_east", CONF_STOP_SEARCH: "Stop"},
+        )
+
+    with patch(
+        "custom_components.bods_bus_tracker.config_flow.BODSStopSubentryFlow._async_prepare_stop",
+        new=AsyncMock(side_effect=error),
+    ):
+        result2 = await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {CONF_STOP_SELECTION: STOP.stop_id},
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["errors"] == {"base": expected}
+
+
+async def _start_reconfigure(hass, entry: MockConfigEntry):
+    entry.add_to_hass(hass)
+    subentry = next(iter(entry.subentries.values()))
+    return await hass.config_entries.subentries.async_init(
+        (entry.entry_id, SUBENTRY_TYPE_STOP),
+        context={
+            "source": SOURCE_RECONFIGURE,
+            "subentry_id": subentry.subentry_id,
+        },
+    )
+
+
+async def test_reconfigure_dynamic_sensor_required(hass) -> None:
+    """Reconfigure cannot enable routed walking without a source sensor."""
+    entry = _entry()
+    with (
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.async_ensure_gtfs",
+            new=AsyncMock(return_value=Path("/tmp/ne.zip")),
+        ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.discover_stop_services",
+            return_value=DISCOVERY,
+        ),
+    ):
+        result = await _start_reconfigure(hass, entry)
+        result2 = await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {
+                CONF_SERVICES: ["ANUM|X14"],
+                CONF_STOP_VIEW: STOP_VIEW_DEPARTURES,
+                CONF_WALKING_TIME: 5,
+                CONF_DYNAMIC_WALKING_TIME: True,
+                CONF_POLL_INTERVAL: 30,
+            },
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["errors"] == {
+        CONF_WALKING_TIME_ENTITY: "walking_time_entity_required"
+    }
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"),
+    [
+        (ClientResponseError(None, (), status=403), "access_forbidden"),
+        (ClientConnectionError("offline"), "cannot_connect"),
+        (RuntimeError("boom"), "unknown"),
+    ],
+)
+async def test_reconfigure_service_validation_errors(
+    hass, error: Exception, expected: str
+) -> None:
+    """Reconfigure retains the current settings when validation fails."""
+    entry = _entry()
+    with (
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.async_ensure_gtfs",
+            new=AsyncMock(return_value=Path("/tmp/ne.zip")),
+        ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow.discover_stop_services",
+            return_value=DISCOVERY,
+        ),
+        patch(
+            "custom_components.bods_bus_tracker.config_flow._async_validate_api_key",
+            new=AsyncMock(side_effect=error),
+        ),
+    ):
+        result = await _start_reconfigure(hass, entry)
+        result2 = await hass.config_entries.subentries.async_configure(
+            result["flow_id"],
+            {
+                CONF_SERVICES: ["ANUM|X14"],
+                CONF_STOP_VIEW: STOP_VIEW_DEPARTURES,
+                CONF_WALKING_TIME: 5,
+                CONF_DYNAMIC_WALKING_TIME: False,
+                CONF_POLL_INTERVAL: 30,
+            },
+        )
+
+    assert result2["type"] is FlowResultType.FORM
+    assert result2["errors"] == {"base": expected}
