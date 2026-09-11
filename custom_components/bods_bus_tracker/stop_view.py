@@ -9,10 +9,11 @@ live vehicle position.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
-from .api import ServiceSpec, Trip, calculate_candidates, candidate_dict
+from .api import LiveVehicle, ServiceSpec, Trip, calculate_candidates, candidate_dict
 from .const import (
     AT_STOP_DISTANCE_METRES,
     STOP_VIEW_ARRIVALS,
@@ -110,7 +111,11 @@ def _enrich_row(
 
     latitude = enriched.get("latitude")
     longitude = enriched.get("longitude")
-    if latitude is None or longitude is None or not enriched.get("realtime"):
+    if (
+        not isinstance(latitude, (int, float))
+        or not isinstance(longitude, (int, float))
+        or not enriched.get("realtime")
+    ):
         enriched["distance_to_stop_m"] = None
         enriched["at_stop"] = False
         return enriched
@@ -135,7 +140,7 @@ def _first_for_service(
 def apply_stop_view(
     snapshot: dict[str, Any],
     trips: list[Trip],
-    vehicles,
+    vehicles: Iterable[LiveVehicle],
     now: datetime,
     target_stop: str,
     services: list[ServiceSpec],
@@ -207,8 +212,8 @@ def apply_stop_view(
         if row.get("stop_role") == "destination"
         and row.get("realtime")
         and not row.get("at_stop")
-        and row.get("minutes") is not None
-        and int(row["minutes"]) <= 5
+        and isinstance(row.get("minutes"), (int, float))
+        and float(row["minutes"]) <= 5
     ]
 
     profile = _stop_profile(trips, target_stop)
