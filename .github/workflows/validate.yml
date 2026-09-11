@@ -53,3 +53,11 @@ jobs:
               )
           print(f'Version sync OK: {manifest_version}')
           PY
+
+
+  validate-cache-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run GTFS cache invalidation regression tests
+        run: python -m unittest discover -s tests -p 'test_gtfs_cache_policy.py' -v
