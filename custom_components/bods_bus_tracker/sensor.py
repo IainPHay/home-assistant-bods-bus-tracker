@@ -9,6 +9,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigSubentry
 from homeassistant.const import EntityCategory, MATCH_ALL, UnitOfTime
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import slugify
@@ -49,7 +50,7 @@ class BODSBusBaseEntity(CoordinatorEntity[BODSBusCoordinator], SensorEntity):
         self._attr_translation_key = translation_key
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         """Return the monitored stop as a service device."""
         return stop_device_info(self._subentry, self._device_identifier)
 
@@ -69,9 +70,12 @@ class NextBusSensor(BODSBusBaseEntity):
         super().__init__(coordinator, entry, subentry, "next_bus", "next_bus")
 
     @property
-    def native_value(self):
+    def native_value(self) -> str | None:
         data = self.coordinator.data.get("next_bus", {})
-        return data.get("route") if data.get("available") else None
+        if not data.get("available"):
+            return None
+        route = data.get("route")
+        return str(route) if route is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -106,8 +110,9 @@ class NextBusMinutesSensor(BODSBusBaseEntity):
         )
 
     @property
-    def native_value(self):
-        return self.coordinator.data.get("next_bus", {}).get("minutes")
+    def native_value(self) -> int | None:
+        value = self.coordinator.data.get("next_bus", {}).get("minutes")
+        return int(value) if isinstance(value, (int, float)) else None
 
 
 class NextBusTimestampSensor(BODSBusBaseEntity):
@@ -152,8 +157,9 @@ class NextBusDelaySensor(BODSBusBaseEntity):
         )
 
     @property
-    def native_value(self):
-        return self.coordinator.data.get("next_bus", {}).get("delay_minutes")
+    def native_value(self) -> float | None:
+        value = self.coordinator.data.get("next_bus", {}).get("delay_minutes")
+        return float(value) if isinstance(value, (int, float)) else None
 
 
 class NextBusTimingSensor(BODSBusBaseEntity):
@@ -171,11 +177,12 @@ class NextBusTimingSensor(BODSBusBaseEntity):
         super().__init__(coordinator, entry, subentry, "next_bus_timing", "next_bus_timing")
 
     @property
-    def native_value(self):
+    def native_value(self) -> str | None:
         data = self.coordinator.data.get("next_bus", {})
         if not data.get("available"):
             return None
-        return data.get("timing_status")
+        value = data.get("timing_status")
+        return str(value) if value is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -203,8 +210,9 @@ class LeaveInSensor(BODSBusBaseEntity):
         super().__init__(coordinator, entry, subentry, "leave_in", "leave_in")
 
     @property
-    def native_value(self):
-        return self.coordinator.data.get("next_bus", {}).get("leave_in_minutes")
+    def native_value(self) -> int | None:
+        value = self.coordinator.data.get("next_bus", {}).get("leave_in_minutes")
+        return int(value) if isinstance(value, (int, float)) else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -241,10 +249,13 @@ class ServiceSensor(BODSBusBaseEntity):
         self._service = service
 
     @property
-    def native_value(self):
-        return self.coordinator.data.get("services", {}).get(self._service.key, {}).get(
-            "minutes"
+    def native_value(self) -> int | None:
+        value = (
+            self.coordinator.data.get("services", {})
+            .get(self._service.key, {})
+            .get("minutes")
         )
+        return int(value) if isinstance(value, (int, float)) else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -273,14 +284,17 @@ class DiagnosticSensor(BODSBusBaseEntity):
             self._attr_options = ["ok", "degraded", "scheduled_only"]
 
     @property
-    def native_value(self):
+    def native_value(self) -> str | int | None:
         data = self.coordinator.data
         if self._key == "data_status":
-            return data.get("health")
+            value = data.get("health")
+            return str(value) if value is not None else None
         if self._key == "live_vehicles":
-            return data.get("live_vehicle_count")
+            value = data.get("live_vehicle_count")
+            return int(value) if isinstance(value, (int, float)) else None
         if self._key == "gtfs_matches":
-            return data.get("match_stats", {}).get("matched")
+            value = data.get("match_stats", {}).get("matched")
+            return int(value) if isinstance(value, (int, float)) else None
         return None
 
 
