@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0-beta.5 — in development
+
+- Fixed a release-blocking Home Assistant reconfigure-flow timeout found during beta.4 testing.
+- Optimised single-stop GTFS service discovery by pre-filtering raw `stop_times.txt` lines for the target stop before invoking the CSV parser.
+- Preserves exact CSV column matching and the full set of services available at the stop; this is a performance optimisation only and does not restrict reconfiguration choices.
+- Added regression coverage for exact stop matching, quoted stop IDs and false-positive target text in other GTFS columns.
+
+
 ## 0.6.0-beta.4 — 2026-09-11
 
 - Added a pure GTFS parsed-index cache-validation policy and automated regression tests.
