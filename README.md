@@ -120,8 +120,9 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
    - **Arrivals** for an arrival-only view;
    - **Arrivals and departures** for a terminus or bus station where the distinction is useful.
 8. Optionally enter the **Static walking time to stop**. This remains the safe fallback for leave guidance.
-9. To use routed walking time, enable **Use routed dynamic walking time** and select a Home Assistant duration sensor created by a routing integration such as HERE Travel Time or Google Maps Travel Time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
-10. Choose the live polling interval. **30 seconds** is recommended.
+9. To use routed walking time, enable **Use routed dynamic walking time** and select a Home Assistant duration sensor created by a routing integration such as HERE Travel Time or Google Maps Travel Time.
+10. Optionally adjust **Maximum routed walking time**; the default is **120 minutes** and longer provider durations fall back to the static walking time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
+11. Choose the live polling interval. **30 seconds** is recommended.
 
 ### Supported regional timetable feeds
 
@@ -159,7 +160,7 @@ Use the stop subentry's **Reconfigure** action to change:
 - stop view;
 - polling interval;
 - static walking time to the stop;
-- optional routed dynamic walking time and its Home Assistant travel-time sensor.
+- optional routed dynamic walking time, its Home Assistant travel-time sensor, and the per-stop maximum routed walking duration.
 
 To track a different physical boarding point, add the new stop and remove the old one.
 
