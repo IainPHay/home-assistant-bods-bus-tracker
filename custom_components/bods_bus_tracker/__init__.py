@@ -146,7 +146,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> b
             await coordinator.async_prepare()
         except GTFSDownloadError as exc:
             raise ConfigEntryNotReady(
-                f"Unable to prepare {subentry.title}: {exc}"
+                translation_domain=DOMAIN,
+                translation_key="gtfs_prepare_failed",
+                translation_placeholders={"stop": subentry.title},
             ) from exc
         await coordinator.async_config_entry_first_refresh()
         coordinators[subentry.subentry_id] = coordinator
