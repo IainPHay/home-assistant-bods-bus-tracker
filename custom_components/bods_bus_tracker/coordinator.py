@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import (
     ServiceSpec,
+    Trip,
     make_snapshot,
     parse_service_key,
     parse_siri,
@@ -95,9 +96,9 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         poll_interval = int(
             subentry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
         )
-        self._trips = []
+        self._trips: list[Trip] = []
         self._gtfs_info: dict[str, object] = {}
-        self._service_date = None
+        self._service_date: date | None = None
         self._gtfs_generation: int | None = None
         self._gtfs_initial_source: str | None = None
         self._gtfs_initial_prepare_seconds: float | None = None
@@ -115,9 +116,14 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Prepare the stop-specific view of the shared regional GTFS index."""
         await self._async_sync_gtfs(datetime.now(LOCAL_TZ).date())
 
-    async def _async_sync_gtfs(self, service_date) -> None:
+    async def _async_sync_gtfs(self, service_date: date) -> None:
         shared_trips, shared_info = await self.timetable.async_get(service_date)
-        generation = int(shared_info.get("index_generation", 0))
+        generation_value = shared_info.get("index_generation", 0)
+        generation = (
+            int(generation_value)
+            if isinstance(generation_value, (str, int, float))
+            else 0
+        )
         if self._service_date == service_date and self._gtfs_generation == generation:
             self._gtfs_info["index_last_source"] = shared_info.get("index_source")
             self._gtfs_info["index_last_prepare_seconds"] = shared_info.get(
@@ -135,7 +141,9 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self._gtfs_initial_source = str(shared_info.get("index_source", "unknown"))
             initial_seconds = shared_info.get("index_prepare_seconds")
             self._gtfs_initial_prepare_seconds = (
-                float(initial_seconds) if initial_seconds is not None else None
+                float(initial_seconds)
+                if isinstance(initial_seconds, (str, int, float))
+                else None
             )
 
         self._gtfs_info = {
@@ -151,13 +159,18 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         }
         self._service_date = service_date
         self._gtfs_generation = generation
+        prepare_seconds = shared_info.get("index_prepare_seconds", 0.0)
         _LOGGER.debug(
             "Loaded shared GTFS index for %s/%s: %s target trips (%s, %.3fs)",
             self.stop_atco,
             service_date,
             self._gtfs_info.get("target_trip_count"),
             shared_info.get("index_source"),
-            float(shared_info.get("index_prepare_seconds", 0.0)),
+            (
+                float(prepare_seconds)
+                if isinstance(prepare_seconds, (str, int, float))
+                else 0.0
+            ),
         )
 
     async def _async_refresh_gtfs_if_needed(self, now: datetime) -> None:
