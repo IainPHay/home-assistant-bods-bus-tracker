@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -275,12 +277,9 @@ async def test_missing_dynamic_walking_entity_creates_and_clears_repair(hass) ->
 
     # The Repair is deliberately delayed until the integration is running and
     # the entity has been confirmed missing on a second coordinator pass.
-    first = coordinator._walking_guidance_values(
-        __import__("datetime").datetime.now(coordinator.update_interval.__class__.__module__ and __import__("zoneinfo").ZoneInfo("Europe/London"))
-    )
-    second = coordinator._walking_guidance_values(
-        __import__("datetime").datetime.now(__import__("zoneinfo").ZoneInfo("Europe/London"))
-    )
+    now = datetime.now(ZoneInfo("Europe/London"))
+    first = coordinator._walking_guidance_values(now)
+    second = coordinator._walking_guidance_values(now)
     assert first[1] == "static_fallback"
     assert second[4] == "missing"
 
@@ -292,9 +291,7 @@ async def test_missing_dynamic_walking_entity_creates_and_clears_repair(hass) ->
         "6.2",
         {"unit_of_measurement": "min"},
     )
-    dynamic = coordinator._walking_guidance_values(
-        __import__("datetime").datetime.now(__import__("zoneinfo").ZoneInfo("Europe/London"))
-    )
+    dynamic = coordinator._walking_guidance_values(now)
 
     assert dynamic[0] == 7
     assert dynamic[1] == "dynamic"
