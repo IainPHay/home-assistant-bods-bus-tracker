@@ -39,6 +39,7 @@ from .const import (
     BODS_VEHICLE_URL,
     CONF_API_KEY,
     CONF_DYNAMIC_WALKING_TIME,
+    CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SERVICES,
@@ -50,12 +51,15 @@ from .const import (
     CONF_WALKING_TIME,
     CONF_WALKING_TIME_ENTITY,
     DEFAULT_DYNAMIC_WALKING_TIME,
+    DEFAULT_MAX_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
     DOMAIN,
+    MAX_MAX_DYNAMIC_WALKING_TIME,
     MAX_POLL_INTERVAL,
     MAX_WALKING_TIME,
+    MIN_MAX_DYNAMIC_WALKING_TIME,
     MIN_POLL_INTERVAL,
     MIN_WALKING_TIME,
     REGIONS,
@@ -525,6 +529,12 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                     )
                     self._data[CONF_DYNAMIC_WALKING_TIME] = dynamic_walking
                     self._data[CONF_WALKING_TIME_ENTITY] = walking_entity
+                    self._data[CONF_MAX_DYNAMIC_WALKING_TIME] = int(
+                        user_input.get(
+                            CONF_MAX_DYNAMIC_WALKING_TIME,
+                            DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                        )
+                    )
                     self._data[CONF_POLL_INTERVAL] = int(
                         user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
                     )
@@ -580,6 +590,18 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         default=DEFAULT_DYNAMIC_WALKING_TIME,
                     ): selector.BooleanSelector(),
                     vol.Optional(CONF_WALKING_TIME_ENTITY): _walking_time_entity_selector(),
+                    vol.Optional(
+                        CONF_MAX_DYNAMIC_WALKING_TIME,
+                        default=DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_MAX_DYNAMIC_WALKING_TIME,
+                            max=MAX_MAX_DYNAMIC_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
                     vol.Optional(
                         CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL
                     ): selector.NumberSelector(
@@ -650,6 +672,12 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             CONF_WALKING_TIME: int(user_input[CONF_WALKING_TIME]),
                             CONF_DYNAMIC_WALKING_TIME: dynamic_walking,
                             CONF_WALKING_TIME_ENTITY: walking_entity,
+                            CONF_MAX_DYNAMIC_WALKING_TIME: int(
+                                user_input.get(
+                                    CONF_MAX_DYNAMIC_WALKING_TIME,
+                                    DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                                )
+                            ),
                             CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
                         },
                     )
@@ -720,6 +748,23 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         ),
                     ): selector.BooleanSelector(),
                     entity_marker: _walking_time_entity_selector(),
+                    vol.Optional(
+                        CONF_MAX_DYNAMIC_WALKING_TIME,
+                        default=int(
+                            subentry.data.get(
+                                CONF_MAX_DYNAMIC_WALKING_TIME,
+                                DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_MAX_DYNAMIC_WALKING_TIME,
+                            max=MAX_MAX_DYNAMIC_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
                     vol.Required(
                         CONF_POLL_INTERVAL,
                         default=int(
