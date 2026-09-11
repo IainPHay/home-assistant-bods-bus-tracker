@@ -1,10 +1,18 @@
 # Changelog
 
-## 0.6.0-beta.4 — in development
+## 0.6.0-beta.4 — 2026-09-11
 
 - Added a pure GTFS parsed-index cache-validation policy and automated regression tests.
 - Cache reuse is now explicitly tested to require an exact match for the GTFS file fingerprint, service date, configured service set and cache schema.
 - Added a dedicated CI job for GTFS cache invalidation policy tests.
+- Added a Home Assistant-native test harness using `pytest-homeassistant-custom-component`, covering parent configuration, reauthentication, stop subentries, reconfiguration, setup/unload/removal, Repairs, diagnostics, entities and live-feed resilience.
+- Added synthetic GTFS and SIRI-VM fixtures that exercise real ZIP/CSV/XML parsing, service calendars, stop/service discovery, trip indexing, live matching, delay projection and timetable-fallback health states without external network dependencies.
+- Added explicit tests for the shared BODS operator feed, including cache reuse, in-flight de-duplication, 401/403/429 classification, timeout/connection handling and unload cancellation.
+- Added entity-level tests for service-device grouping, translated entity keys, diagnostic defaults, device classes, delay availability semantics and diagnostics redaction.
+- Added an enforced CI coverage floor of 95 percent; the beta.4 release candidate measures 96 percent overall with configuration-flow coverage at 100 percent.
+- Added a Home Assistant-style strict mypy CI gate and resolved all strict-typing findings across the integration; all 15 runtime source files now pass.
+- Updated the repository quality-scale tracker so every applicable Bronze, Silver, Gold and Platinum rule is marked complete, with non-applicable rules explicitly documented as exempt.
+- These quality changes do not alter the live-to-GTFS ETA matching policy; they primarily add automated proof around the existing beta.3/beta.2 runtime behaviour.
 
 ## 0.6.0-beta.3 — 2026-09-11
 
