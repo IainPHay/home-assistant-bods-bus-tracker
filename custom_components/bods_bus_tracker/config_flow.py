@@ -134,8 +134,6 @@ def _region_search_order(hass: HomeAssistant) -> list[str]:
     """Order regions with the HA installation's nearest regional centre first."""
     lat = hass.config.latitude
     lon = hass.config.longitude
-    if lat is None or lon is None:
-        return list(REGIONS)
     return sorted(
         REGIONS,
         key=lambda region: _distance_sq(
@@ -292,14 +290,12 @@ class BODSBusTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return supported stop subentry flows."""
         return {SUBENTRY_TYPE_STOP: BODSStopSubentryFlow}
 
-    @override
     async def async_step_reauth(
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
         """Start BODS API-key reauthentication."""
         return await self.async_step_reauth_confirm()
 
-    @override
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -367,7 +363,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
         self._discovery = discovery
         return await self.async_step_services()
 
-    @override
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -443,7 +438,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
             errors=errors,
         )
 
-    @override
     async def async_step_stop_select(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -482,7 +476,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
             errors=errors,
         )
 
-    @override
     async def async_step_services(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -603,7 +596,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
             errors=errors,
         )
 
-    @override
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
