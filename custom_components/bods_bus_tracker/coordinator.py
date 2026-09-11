@@ -6,7 +6,6 @@ import asyncio
 import logging
 import math
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -17,7 +16,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import (
     ServiceSpec,
-    build_gtfs_index,
     make_snapshot,
     parse_service_key,
     parse_siri,
@@ -43,21 +41,13 @@ from .const import (
     MAX_WALKING_TIME,
     STOP_VIEW_ARRIVALS,
 )
-from .gtfs import async_ensure_gtfs
+from .gtfs import SharedGTFSRegionIndex
 from .live_feed import BODSLiveFeedClient, BODSLiveFeedResult
 from .stop_view import apply_stop_view
 from .walking import apply_walking_guidance, normalise_dynamic_walking_minutes
 
 _LOGGER = logging.getLogger(__name__)
 LOCAL_TZ = ZoneInfo(LOCAL_TIME_ZONE)
-
-
-def _path_mtime(path: Path) -> float | None:
-    """Return a path modification time outside Home Assistant's event loop."""
-    try:
-        return path.stat().st_mtime
-    except OSError:
-        return None
 
 
 class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -69,10 +59,12 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry: ConfigEntry,
         subentry: ConfigSubentry,
         live_feed: BODSLiveFeedClient,
+        timetable: SharedGTFSRegionIndex,
     ) -> None:
         self.entry = entry
         self.subentry = subentry
         self.live_feed = live_feed
+        self.timetable = timetable
         self.api_key: str = entry.data[CONF_API_KEY]
         self.region: str = subentry.data[CONF_REGION]
         self.stop_atco: str = subentry.data[CONF_STOP_ATCO]
@@ -100,11 +92,12 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         poll_interval = int(
             subentry.data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
         )
-        self.gtfs_path: Path | None = None
         self._trips = []
         self._gtfs_info: dict[str, object] = {}
         self._service_date = None
-        self._last_gtfs_check: datetime | None = None
+        self._gtfs_generation: int | None = None
+        self._gtfs_initial_source: str | None = None
+        self._gtfs_initial_prepare_seconds: float | None = None
         super().__init__(
             hass,
             _LOGGER,
@@ -114,45 +107,56 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     async def async_prepare(self) -> None:
-        """Prepare GTFS data before first coordinator refresh."""
-        self.gtfs_path = await async_ensure_gtfs(self.hass, self.region)
-        await self._async_rebuild_gtfs(datetime.now(LOCAL_TZ).date())
+        """Prepare the stop-specific view of the shared regional GTFS index."""
+        await self._async_sync_gtfs(datetime.now(LOCAL_TZ).date())
 
-    async def _async_rebuild_gtfs(self, service_date) -> None:
-        assert self.gtfs_path is not None
-        self._trips, self._gtfs_info = await self.hass.async_add_executor_job(
-            build_gtfs_index,
-            self.gtfs_path,
-            service_date,
-            self.stop_atco,
-            self.services,
-        )
+    async def _async_sync_gtfs(self, service_date) -> None:
+        shared_trips, shared_info = await self.timetable.async_get(service_date)
+        generation = int(shared_info.get("index_generation", 0))
+        if self._service_date == service_date and self._gtfs_generation == generation:
+            self._gtfs_info["index_last_source"] = shared_info.get("index_source")
+            self._gtfs_info["index_last_prepare_seconds"] = shared_info.get(
+                "index_prepare_seconds"
+            )
+            return
+
+        selected = {(service.operator_noc, service.route) for service in self.services}
+        self._trips = [
+            trip
+            for trip in shared_trips
+            if (trip.operator_noc, trip.route) in selected
+        ]
+        if self._gtfs_initial_source is None:
+            self._gtfs_initial_source = str(shared_info.get("index_source", "unknown"))
+            initial_seconds = shared_info.get("index_prepare_seconds")
+            self._gtfs_initial_prepare_seconds = (
+                float(initial_seconds) if initial_seconds is not None else None
+            )
+
+        self._gtfs_info = {
+            **shared_info,
+            "relevant_trip_count": len(self._trips),
+            "target_trip_count": sum(
+                1 for trip in self._trips if trip.target(self.stop_atco) is not None
+            ),
+            "index_initial_source": self._gtfs_initial_source,
+            "index_initial_prepare_seconds": self._gtfs_initial_prepare_seconds,
+            "index_last_source": shared_info.get("index_source"),
+            "index_last_prepare_seconds": shared_info.get("index_prepare_seconds"),
+        }
         self._service_date = service_date
-        self._last_gtfs_check = datetime.now(LOCAL_TZ)
+        self._gtfs_generation = generation
         _LOGGER.debug(
-            "Built GTFS index for %s/%s: %s target trips",
+            "Loaded shared GTFS index for %s/%s: %s target trips (%s, %.3fs)",
             self.stop_atco,
             service_date,
             self._gtfs_info.get("target_trip_count"),
+            shared_info.get("index_source"),
+            float(shared_info.get("index_prepare_seconds", 0.0)),
         )
 
     async def _async_refresh_gtfs_if_needed(self, now: datetime) -> None:
-        if self._service_date != now.date():
-            await self._async_rebuild_gtfs(now.date())
-            return
-        if self._last_gtfs_check and now - self._last_gtfs_check < timedelta(hours=1):
-            return
-        old_path = self.gtfs_path
-        old_mtime = (
-            await self.hass.async_add_executor_job(_path_mtime, old_path)
-            if old_path is not None
-            else None
-        )
-        self.gtfs_path = await async_ensure_gtfs(self.hass, self.region)
-        self._last_gtfs_check = now
-        new_mtime = await self.hass.async_add_executor_job(_path_mtime, self.gtfs_path)
-        if old_mtime is None or new_mtime != old_mtime:
-            await self._async_rebuild_gtfs(now.date())
+        await self._async_sync_gtfs(now.date())
 
     def _walking_guidance_values(
         self, now: datetime
