@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigSubentry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -43,7 +44,7 @@ class LeaveNowBinarySensor(CoordinatorEntity[BODSBusCoordinator], BinarySensorEn
             self._device_identifier = f"{entry.entry_id}:{subentry.subentry_id}"
 
     @property
-    def device_info(self):
+    def device_info(self) -> DeviceInfo:
         """Return the monitored stop as a service device."""
         return stop_device_info(self._subentry, self._device_identifier)
 
