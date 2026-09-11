@@ -101,11 +101,13 @@ def test_walking_metadata_is_exposed() -> None:
         walking_mode="dynamic",
         walking_time_entity="sensor.walk_to_stop",
         walking_dynamic_minutes=7.4,
+        walking_max_dynamic_minutes=180,
         walking_fallback=False,
         walking_source_status="ok",
     )["next_bus"]
     assert data["walking_mode"] == "dynamic"
     assert data["walking_time_entity"] == "sensor.walk_to_stop"
     assert data["walking_dynamic_minutes"] == 7.4
+    assert data["walking_max_dynamic_minutes"] == 180
     assert data["walking_fallback"] is False
     assert data["walking_source_status"] == "ok"
