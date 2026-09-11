@@ -24,7 +24,7 @@ from .const import (
     PLATFORMS,
     SUBENTRY_TYPE_STOP,
 )
-from .api import parse_service_key
+from .api import ServiceSpec, parse_service_key
 from .coordinator import BODSBusCoordinator
 from .gtfs import GTFSDownloadError, SharedGTFSRegionIndex
 from .live_feed import BODSLiveFeedClient
@@ -119,7 +119,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> b
     coordinators: dict[str, BODSBusCoordinator] = {}
     live_feed = BODSLiveFeedClient(hass, entry.data[CONF_API_KEY])
 
-    region_services: dict[str, dict[str, object]] = {}
+    region_services: dict[str, dict[str, ServiceSpec]] = {}
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
         region = str(subentry.data[CONF_REGION])
         services = region_services.setdefault(region, {})
