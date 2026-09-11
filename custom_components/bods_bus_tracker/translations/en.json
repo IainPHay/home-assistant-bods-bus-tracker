@@ -195,5 +195,11 @@
     "gtfs_update_failed": {
       "message": "Unable to refresh BODS timetable data. Home Assistant will retry automatically."
     }
+  },
+  "issues": {
+    "walking_time_entity_missing": {
+      "title": "Dynamic walking-time sensor is missing",
+      "description": "The configured travel-time entity `{entity_id}` for **{stop}** no longer exists. BODS Bus Tracker is using the configured static walking-time fallback. Reconfigure this bus stop and select an existing duration sensor, or disable routed dynamic walking time."
+    }
   }
 }
