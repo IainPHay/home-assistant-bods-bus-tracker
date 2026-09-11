@@ -11,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 
 from .const import (
     CONF_API_KEY,
@@ -32,6 +33,7 @@ from .gtfs import GTFSDownloadError, SharedGTFSRegionIndex
 from .live_feed import BODSLiveFeedClient
 
 _LOGGER = logging.getLogger(__name__)
+WALKING_ISSUE_PREFIX = "walking_time_entity_missing_"
 
 
 @dataclass(slots=True)
@@ -44,6 +46,24 @@ class BODSBusRuntimeData:
 
 
 type BODSBusConfigEntry = ConfigEntry[BODSBusRuntimeData]
+
+
+def _cleanup_orphan_walking_issues(
+    hass: HomeAssistant, entry: BODSBusConfigEntry
+) -> None:
+    """Delete routed-walking Repairs for stop subentries that no longer exist."""
+    valid_ids = {
+        f"{WALKING_ISSUE_PREFIX}{subentry.subentry_id}"
+        for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP)
+    }
+    registry = ir.async_get(hass)
+    for domain, issue_id in list(registry.issues):
+        if (
+            domain == DOMAIN
+            and issue_id.startswith(WALKING_ISSUE_PREFIX)
+            and issue_id not in valid_ids
+        ):
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
 
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -118,6 +138,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> bool:
     """Set up one BODS account and all configured stop subentries."""
+    _cleanup_orphan_walking_issues(hass, entry)
     coordinators: dict[str, BODSBusCoordinator] = {}
     live_feed = BODSLiveFeedClient(hass, entry.data[CONF_API_KEY])
 
@@ -174,7 +195,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> 
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> None:
-    """Remove persistent BODS Bus Tracker cache data with the config entry."""
+    """Remove persistent BODS Bus Tracker data with the config entry."""
+    registry = ir.async_get(hass)
+    for domain, issue_id in list(registry.issues):
+        if domain == DOMAIN and issue_id.startswith(WALKING_ISSUE_PREFIX):
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
+
     await hass.async_add_executor_job(
         shutil.rmtree,
         hass.config.path(CACHE_DIR),
