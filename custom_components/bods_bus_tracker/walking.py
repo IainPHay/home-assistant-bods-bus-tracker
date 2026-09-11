@@ -13,6 +13,8 @@ def normalise_dynamic_walking_minutes(
     maximum_minutes: int,
 ) -> float | None:
     """Normalise a Home Assistant duration-like sensor state to minutes."""
+    if value is None:
+        return None
     try:
         numeric = float(value)
     except (TypeError, ValueError):
