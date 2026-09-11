@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -19,6 +20,7 @@ from .const import (
     CONF_SERVICES,
     CONF_STOP_ATCO,
     CONF_STOP_NAME,
+    CACHE_DIR,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
     PLATFORMS,
@@ -167,3 +169,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> 
         entry.runtime_data.coordinators.clear()
         entry.runtime_data.timetables.clear()
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> None:
+    """Remove persistent BODS Bus Tracker cache data with the config entry."""
+    await hass.async_add_executor_job(
+        shutil.rmtree,
+        hass.config.path(CACHE_DIR),
+        True,
+    )
