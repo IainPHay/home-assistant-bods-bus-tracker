@@ -1,0 +1,30 @@
+blueprint:
+  name: BODS Bus Tracker - Leave now notification
+  description: >
+    Run a notification or announcement action when a BODS Bus Tracker
+    Leave now binary sensor turns on.
+  domain: automation
+  input:
+    leave_now_entity:
+      name: Leave now entity
+      description: Select the Leave now binary sensor for the bus stop.
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+    notify_action:
+      name: Notification or announcement
+      description: Choose the action to run when it is time to leave.
+      selector:
+        action: {}
+
+triggers:
+  - trigger: state
+    entity_id: !input leave_now_entity
+    to: "on"
+
+conditions: []
+
+actions: !input notify_action
+
+mode: restart
