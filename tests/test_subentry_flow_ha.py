@@ -17,6 +17,7 @@ from custom_components.bods_bus_tracker.const import (
     AUTO_REGION,
     CONF_API_KEY,
     CONF_DYNAMIC_WALKING_TIME,
+    CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SERVICES,
@@ -421,6 +422,7 @@ async def test_reconfigure_stop(hass) -> None:
                 CONF_WALKING_TIME: 6,
                 CONF_DYNAMIC_WALKING_TIME: True,
                 CONF_WALKING_TIME_ENTITY: "sensor.walk_to_fairway",
+                CONF_MAX_DYNAMIC_WALKING_TIME: 480,
                 CONF_POLL_INTERVAL: 60,
             },
         )
@@ -430,4 +432,5 @@ async def test_reconfigure_stop(hass) -> None:
     updated = entry.subentries[subentry.subentry_id]
     assert updated.data[CONF_STOP_VIEW] == STOP_VIEW_BOTH
     assert updated.data[CONF_WALKING_TIME_ENTITY] == "sensor.walk_to_fairway"
+    assert updated.data[CONF_MAX_DYNAMIC_WALKING_TIME] == 480
     assert updated.data[CONF_POLL_INTERVAL] == 60
