@@ -8,9 +8,20 @@ The integration does **not** call HERE or Google itself. Instead, configure a Ho
 
 Each stop retains the existing **Static walking time to stop** setting. When **Use routed dynamic walking time** is enabled, BODS Bus Tracker reads the selected **Travel-time sensor**.
 
-A valid routed value overrides the static time. If the dynamic sensor is missing, `unknown`, `unavailable`, stale, non-numeric, negative, has an unsupported unit, or exceeds 120 minutes, the integration automatically falls back to the configured static walking time. If that static fallback is `0`, Leave by / Leave in / Leave now guidance is disabled until the dynamic sensor becomes valid again.
+A valid routed value overrides the static time. If the dynamic sensor is missing, `unknown`, `unavailable`, stale, non-numeric, negative, has an unsupported unit, or exceeds the configured **Maximum routed walking time**, the integration automatically falls back to the configured static walking time. The maximum defaults to **120 minutes** for backward compatibility and can be changed per stop. If the static fallback is `0`, Leave by / Leave in / Leave now guidance is disabled until the dynamic sensor becomes valid again.
 
 Dynamic walking affects only walking guidance. It never changes BODS/GTFS matching, the predicted bus time, the selected next bus, or terminus arrival/departure logic.
+
+## Maximum routed walking time
+
+Each stop has a **Maximum routed walking time** safety limit. The default is **120 minutes**, matching the original v0.6 beta behaviour. It can be configured from 1 to 1440 minutes.
+
+The limit is deliberately separate from the static fallback:
+
+- the **Static walking time to stop** is the value used when routed walking cannot be trusted;
+- the **Maximum routed walking time** determines whether a valid provider duration is plausible enough to use.
+
+For example, a stop configured with a 480-minute maximum can accept a HERE result of 407 minutes, while another stop can retain the conservative 120-minute default.
 
 ## Supported sensor values
 
@@ -64,6 +75,7 @@ walking_mode: dynamic
 walking_minutes: 8
 walking_time_entity: sensor.walk_to_the_fairway
 walking_dynamic_minutes: 7.4
+walking_max_dynamic_minutes: 120
 walking_fallback: false
 walking_source_status: ok
 ```
