@@ -15,7 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import BinaryIO, Iterable
+from typing import IO, Iterable
 from zoneinfo import ZoneInfo
 
 from .const import LOCAL_TIME_ZONE, SERVICE_SEPARATOR
@@ -318,7 +318,7 @@ def search_stops(
 
 
 def _calling_trip_ids_for_stop(
-    file_handle: BinaryIO,
+    file_handle: IO[bytes],
     stop_id: str,
     allowed_trip_ids: set[str],
 ) -> set[str]:
