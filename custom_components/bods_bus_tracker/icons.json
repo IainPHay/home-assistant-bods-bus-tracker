@@ -1,0 +1,59 @@
+{
+  "entity": {
+    "sensor": {
+      "next_bus": {
+        "default": "mdi:bus"
+      },
+      "next_bus_minutes": {
+        "default": "mdi:bus-clock"
+      },
+      "next_bus_expected": {
+        "default": "mdi:clock-check-outline"
+      },
+      "next_bus_scheduled": {
+        "default": "mdi:clock-outline"
+      },
+      "next_bus_delay": {
+        "default": "mdi:clock-alert-outline"
+      },
+      "next_bus_timing": {
+        "default": "mdi:calendar-clock",
+        "state": {
+          "early": "mdi:clock-fast",
+          "on_time": "mdi:clock-check-outline",
+          "late": "mdi:clock-alert-outline",
+          "timetable": "mdi:calendar-clock"
+        }
+      },
+      "leave_by": {
+        "default": "mdi:walk"
+      },
+      "leave_in": {
+        "default": "mdi:walk"
+      },
+      "next_service": {
+        "default": "mdi:bus-clock"
+      },
+      "next_service_operator": {
+        "default": "mdi:bus-clock"
+      },
+      "data_status": {
+        "default": "mdi:database-check-outline"
+      },
+      "last_update": {
+        "default": "mdi:update"
+      },
+      "live_vehicles": {
+        "default": "mdi:bus-multiple"
+      },
+      "gtfs_matches": {
+        "default": "mdi:link-variant"
+      }
+    },
+    "binary_sensor": {
+      "leave_now": {
+        "default": "mdi:walk"
+      }
+    }
+  }
+}
