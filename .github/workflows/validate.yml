@@ -80,3 +80,4 @@ jobs:
           --cov=custom_components.bods_bus_tracker
           --cov-report=term-missing
           --cov-report=xml
+          --cov-fail-under=95
