@@ -160,8 +160,9 @@ async def test_direct_api_key_validators_build_filtered_urls(hass) -> None:
     ):
         await _async_validate_api_key_generic(hass, "abc")
 
-    assert "__bods_bus_tracker_auth_check__" in generic_session.urls[0]
+    assert "/api/v1/dataset/" in generic_session.urls[0]
     assert "api_key=abc" in generic_session.urls[0]
+    assert "limit=1" in generic_session.urls[0]
     assert generic_response.read_called
 
     service_response = FakeResponse()
@@ -174,6 +175,21 @@ async def test_direct_api_key_validators_build_filtered_urls(hass) -> None:
 
     assert "operatorRef=ANUM" in service_session.urls[0]
     assert "lineRef=X14" in service_session.urls[0]
+
+
+async def test_generic_api_key_validator_maps_invalid_token_403_to_auth(hass) -> None:
+    """BODS' real 403 invalid-token response is treated as invalid auth."""
+    response = FakeResponse(403, b'{"detail":"Invalid token."}')
+    session = FakeSession(response)
+
+    with patch(
+        "custom_components.bods_bus_tracker.config_flow.async_get_clientsession",
+        return_value=session,
+    ):
+        with pytest.raises(ClientResponseError) as exc_info:
+            await _async_validate_api_key_generic(hass, "expired-key")
+
+    assert exc_info.value.status == 401
 
 
 async def test_auto_detect_skips_bad_region_and_finds_exact(hass) -> None:
