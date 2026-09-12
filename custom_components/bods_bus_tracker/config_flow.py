@@ -36,6 +36,7 @@ from .api import (
 )
 from .const import (
     AUTO_REGION,
+    BODS_DATASET_URL,
     BODS_VEHICLE_URL,
     CONF_API_KEY,
     CONF_DYNAMIC_WALKING_TIME,
@@ -72,7 +73,10 @@ from .const import (
     VERSION,
 )
 from .gtfs import GTFSDownloadError, async_ensure_gtfs
-from .live_feed_model import classify_bods_http_status
+from .live_feed_model import (
+    classify_bods_http_response,
+    classify_bods_http_status,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -89,22 +93,30 @@ def _config_error_from_http_status(status: int) -> str:
     return "cannot_connect"
 
 
+async def _async_raise_for_bods_response(response: Any) -> None:
+    """Raise a response error, preserving BODS' explicit invalid-token signal."""
+    payload = await response.read()
+    if response.status < 400:
+        return
+    result = classify_bods_http_response(response.status, payload)
+    status = 401 if result == "authentication_failed" else response.status
+    raise ClientResponseError(None, (), status=status)
+
+
 async def _async_validate_api_key_generic(hass: HomeAssistant, api_key: str) -> None:
-    """Validate a key without downloading a useful national vehicle feed."""
+    """Validate the API token with a minimal BODS dataset request."""
     session = async_get_clientsession(hass)
     params = {
-        "operatorRef": "__bods_bus_tracker_auth_check__",
-        "lineRef": "__bods_bus_tracker_auth_check__",
         "api_key": api_key,
+        "limit": 1,
     }
-    url = f"{BODS_VEHICLE_URL}?{urllib.parse.urlencode(params)}"
+    url = f"{BODS_DATASET_URL}?{urllib.parse.urlencode(params)}"
     async with session.get(
         url,
         timeout=ClientTimeout(total=20),
         headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
     ) as response:
-        response.raise_for_status()
-        await response.read()
+        await _async_raise_for_bods_response(response)
 
 
 async def _async_validate_api_key(
@@ -124,8 +136,19 @@ async def _async_validate_api_key(
         timeout=ClientTimeout(total=20),
         headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
     ) as response:
-        response.raise_for_status()
-        await response.read()
+        payload = await response.read()
+        if response.status == 403:
+            result = classify_bods_http_response(response.status, payload)
+            if result == "access_forbidden":
+                try:
+                    await _async_validate_api_key_generic(hass, api_key)
+                except ClientResponseError as exc:
+                    if exc.status == 401:
+                        raise
+        if response.status >= 400:
+            result = classify_bods_http_response(response.status, payload)
+            status = 401 if result == "authentication_failed" else response.status
+            raise ClientResponseError(None, (), status=status)
 
 
 def _distance_sq(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
