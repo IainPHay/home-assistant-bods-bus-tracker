@@ -367,9 +367,10 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 for service in operator_services:
                     route_errors[service.key] = f"parse_error: {exc}"
 
-        # Only a genuine HTTP 401 is an authentication failure. 403 may be a
-        # BODS access/WAF response and 429 is rate limiting; neither should
-        # force Home Assistant into a misleading reauthentication flow.
+        # Authentication failure is deliberately narrow: HTTP 401, or a 403
+        # that the shared client independently confirmed as BODS rejecting the
+        # configured token. Other 403 responses remain access/WAF failures and
+        # 429 remains rate limiting, so neither forces misleading reauth.
         if self.services and all(
             route_errors.get(service.key) == "authentication_failed"
             for service in self.services
