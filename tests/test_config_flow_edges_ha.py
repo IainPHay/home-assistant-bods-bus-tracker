@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientConnectionError, ClientResponseError
 import pytest
@@ -78,6 +78,8 @@ class FakeResponse:
         self.status = status
         self.payload = payload
         self.read_called = False
+        self.request_info = MagicMock()
+        self.history = ()
 
     async def __aenter__(self):
         return self
