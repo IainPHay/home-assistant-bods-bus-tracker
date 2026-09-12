@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "bods_bus_tracker"
-VERSION = "0.6.0-beta.6"
+VERSION = "0.6.0-beta.7"
 PLATFORMS = ["sensor", "binary_sensor"]
 SUBENTRY_TYPE_STOP = "stop"
 
@@ -46,6 +46,7 @@ STOP_SEARCH_LIMIT = 25
 AT_STOP_DISTANCE_METRES = 120
 
 BODS_VEHICLE_URL = "https://data.bus-data.dft.gov.uk/api/v1/datafeed/"
+BODS_DATASET_URL = "https://data.bus-data.dft.gov.uk/api/v1/dataset/"
 GTFS_URL_TEMPLATE = (
     "https://data.bus-data.dft.gov.uk/timetable/download/gtfs-file/{region}/"
 )
