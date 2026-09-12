@@ -6,7 +6,7 @@ import asyncio
 import urllib.parse
 from dataclasses import dataclass
 
-from aiohttp import ClientError, ClientTimeout
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -78,7 +78,7 @@ class BODSLiveFeedClient:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._cache.clear()
 
-    async def _async_api_key_is_invalid(self, session) -> bool:
+    async def _async_api_key_is_invalid(self, session: ClientSession) -> bool:
         """Confirm whether a 403 is BODS rejecting the configured API token."""
         params = {
             "api_key": self.api_key,
