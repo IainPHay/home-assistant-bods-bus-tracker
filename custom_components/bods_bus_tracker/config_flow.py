@@ -100,7 +100,7 @@ async def _async_raise_for_bods_response(response: Any) -> None:
         return
     result = classify_bods_http_response(response.status, payload)
     status = 401 if result == "authentication_failed" else response.status
-    raise ClientResponseError(None, (), status=status)
+    raise ClientResponseError(response.request_info, response.history, status=status)
 
 
 async def _async_validate_api_key_generic(hass: HomeAssistant, api_key: str) -> None:
