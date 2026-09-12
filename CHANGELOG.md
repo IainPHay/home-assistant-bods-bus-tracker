@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0-beta.7 — in development
+
+- Fixed a real BODS authentication edge case discovered during beta.6 validation: BODS can return HTTP 403 for an invalid API token rather than HTTP 401.
+- The shared live-feed client now keeps ordinary 403 responses as `access_forbidden`, but performs a minimal secondary BODS token probe when a vehicle-feed 403 is ambiguous.
+- If BODS explicitly reports `{"detail":"Invalid token."}`, the response is classified as `authentication_failed` so Home Assistant can start the normal reauthentication flow.
+- Plain 403 access/WAF responses remain distinct and do not trigger a misleading reauthentication prompt.
+- Initial/reauth API-key validation now uses a minimal dataset request and preserves the explicit invalid-token signal.
+- Added regression coverage for explicit invalid-token payloads, ambiguous vehicle-feed 403s confirmed by a secondary token probe, and config-flow invalid-auth mapping.
+
+
 ## 0.6.0-beta.6 — 2026-09-11
 
 - Made the routed-walking safety ceiling configurable per bus stop instead of hard-coding 120 minutes.
