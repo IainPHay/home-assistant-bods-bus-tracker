@@ -148,7 +148,7 @@ async def _async_validate_api_key(
         if response.status >= 400:
             result = classify_bods_http_response(response.status, payload)
             status = 401 if result == "authentication_failed" else response.status
-            raise ClientResponseError(None, (), status=status)
+            raise ClientResponseError(\n                response.request_info, response.history, status=status\n            )
 
 
 def _distance_sq(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
