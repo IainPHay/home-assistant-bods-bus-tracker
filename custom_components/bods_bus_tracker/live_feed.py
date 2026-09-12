@@ -11,8 +11,11 @@ from aiohttp import ClientError, ClientTimeout
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import BODS_VEHICLE_URL, VERSION
-from .live_feed_model import classify_bods_http_status
+from .const import BODS_DATASET_URL, BODS_VEHICLE_URL, VERSION
+from .live_feed_model import (
+    bods_payload_is_invalid_token,
+    classify_bods_http_response,
+)
 
 BODS_MIN_REQUEST_INTERVAL_SECONDS = 6.0
 BODS_SHARED_CACHE_SECONDS = 15.0
@@ -75,6 +78,30 @@ class BODSLiveFeedClient:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._cache.clear()
 
+    async def _async_api_key_is_invalid(self, session) -> bool:
+        """Confirm whether a 403 is BODS rejecting the configured API token."""
+        params = {
+            "api_key": self.api_key,
+            "limit": 1,
+        }
+        url = f"{BODS_DATASET_URL}?{urllib.parse.urlencode(params)}"
+        try:
+            async with session.get(
+                url,
+                timeout=ClientTimeout(total=20),
+                headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
+            ) as response:
+                payload = await response.read()
+                if response.status == 401:
+                    return True
+                return response.status == 403 and bods_payload_is_invalid_token(
+                    payload
+                )
+        except (TimeoutError, ClientError):
+            return False
+        except Exception:
+            return False
+
     async def _async_fetch_operator(self, operator_noc: str) -> BODSLiveFeedResult:
         """Fetch and cache one operator-level feed with global request spacing."""
         async with self._request_lock:
@@ -104,9 +131,19 @@ class BODSLiveFeedClient:
                 ) as response:
                     payload = await response.read()
                     if response.status >= 400:
+                        error = classify_bods_http_response(
+                            response.status,
+                            payload,
+                        )
+                        if (
+                            response.status == 403
+                            and error == "access_forbidden"
+                            and await self._async_api_key_is_invalid(session)
+                        ):
+                            error = "authentication_failed"
                         result = BODSLiveFeedResult(
                             payload=None,
-                            error=classify_bods_http_status(response.status),
+                            error=error,
                         )
                     else:
                         result = BODSLiveFeedResult(payload=payload)
