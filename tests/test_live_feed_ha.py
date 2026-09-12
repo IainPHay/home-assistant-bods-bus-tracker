@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiohttp import ClientConnectionError
 import pytest
@@ -91,6 +91,45 @@ async def test_http_failures_are_cached_diagnostics(
 
     assert result.payload is None
     assert result.error == expected
+
+
+async def test_ambiguous_403_reauthenticates_when_token_probe_confirms_invalid(
+    hass,
+) -> None:
+    """A BODS 403 becomes auth failure only after a separate invalid-token probe."""
+    session = FakeSession(FakeResponse(403, b"detail"))
+    client = BODSLiveFeedClient(hass, "secret")
+
+    with (
+        patch(
+            "custom_components.bods_bus_tracker.live_feed.async_get_clientsession",
+            return_value=session,
+        ),
+        patch.object(
+            client,
+            "_async_api_key_is_invalid",
+            new=AsyncMock(return_value=True),
+        ) as probe,
+    ):
+        result = await client.async_get_operator("ANUM")
+
+    assert result == BODSLiveFeedResult(
+        payload=None,
+        error="authentication_failed",
+    )
+    probe.assert_awaited_once()
+
+
+async def test_invalid_token_probe_uses_dataset_api(hass) -> None:
+    """The fallback auth probe recognises BODS' explicit invalid-token response."""
+    session = FakeSession(FakeResponse(403, b'{"detail":"Invalid token."}'))
+    client = BODSLiveFeedClient(hass, "secret")
+
+    assert await client._async_api_key_is_invalid(session)
+    assert session.calls == 1
+    assert "/api/v1/dataset/" in session.urls[0]
+    assert "api_key=secret" in session.urls[0]
+    assert "limit=1" in session.urls[0]
 
 
 @pytest.mark.parametrize(
