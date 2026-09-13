@@ -1,0 +1,62 @@
+name: Publish v0.7.0 beta.2
+
+on:
+  push:
+    branches:
+      - feature/v0.7
+    paths:
+      - ".github/workflows/publish-v0.7.0-beta.2.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.7.0-beta.2 --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "v0.7.0-beta.2 already exists."
+            exit 0
+          fi
+
+          cat > /tmp/release-notes.md <<'EOF'
+          v0.7.0-beta.2 adds trusted catchable-bus state on top of the existing BODS ETA and walking guidance.
+
+          ### Catchable bus
+          - Adds a new **Catchable bus** sensor for departure and combined stop views.
+          - Selects the first departure where the passenger-facing expected departure is at or after:
+            current time + effective walking time + configured safety margin.
+          - Adds a per-stop **Catchable-bus safety margin**, default 0 minutes, range 0–30 minutes.
+          - Exposes the immediately following departure as a fallback/reference for future automations.
+          - A genuine live delay can make a previously unreachable bus catchable without changing ETA/matching policy.
+          - Uses the complete ordered departure sequence internally while retaining the existing 12-row public dashboard list.
+          - Catchable summaries exclude live vehicle coordinates and trip IDs.
+          - Arrivals-only and walking-disabled states do not claim a catchable departure.
+
+          ### Architecture
+          Catchability is downstream of BODS ETA/matching and the existing routed/static walking decision. It does not alter Next bus, live matching, timetable ordering, Leave by, Leave in or Leave now.
+
+          The zone-exit notification blueprint remains deliberately deferred until this new state has been validated in real Home Assistant use.
+
+          ### Validation
+          - HACS: passed
+          - Hassfest: passed
+          - version sync: passed
+          - GTFS cache policy: passed
+          - strict mypy: passed
+          - 161 Home Assistant-native tests: passed
+          - coverage: 95.45%
+
+          This is a prerelease for targeted v0.7 testing. Stable v0.6.0 remains the recommended release for normal users.
+          EOF
+
+          gh release create v0.7.0-beta.2 \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "ce777a6165e43cef05c2e63918150b8640a72bca" \
+            --prerelease \
+            --title "BODS Bus Tracker v0.7.0-beta.2 — catchable-bus state" \
+            --notes-file /tmp/release-notes.md
