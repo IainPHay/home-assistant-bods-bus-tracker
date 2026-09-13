@@ -20,7 +20,7 @@ It does **not** alter BODS live matching, the selected departure, or the bus ETA
 
 HERE Travel Time requires a HERE API key.
 
-The official Home Assistant documentation currently states that HERE's **Base Plan includes 5,000 free transactions per month**.
+The official Home Assistant documentation currently states that HERE's **Base Plan includes 5,000 free transactions per month**. Home Assistant notes that one normally polled route can remain within that allowance, but on-demand/custom polling can consume the quota more quickly.
 
 Create the API key using HERE's current developer/platform instructions:
 
@@ -214,7 +214,7 @@ The **BODS live update interval** and the **HERE polling interval** are separate
 
 A 30-second BODS interval does **not** cause HERE to be queried every 30 seconds. BODS only reads the latest state already held by Home Assistant.
 
-The HERE integration owns its own API calls and quota.
+The current Home Assistant HERE integration normally refreshes the route every **5 minutes**. HERE owns those API calls and the associated quota; BODS does not add any HERE requests of its own.
 
 Home Assistant also supports on-demand updates with:
 
@@ -226,9 +226,11 @@ target:
 
 Use on-demand updating carefully. Every provider refresh can consume API quota.
 
+If you want to replace HERE's normal polling with a custom interval, Home Assistant supports disabling polling in the integration's **System options** and then calling `homeassistant.update_entity` from an automation. Home Assistant documents a 10-second debounce for this action.
+
 The Home Assistant HERE documentation currently states that the Base Plan provides **5,000 free transactions per month**, so frequent unconditional polling is not a good default.
 
-A better future pattern is to refresh only when it is useful, for example around an expected journey or after meaningful movement.
+A better pattern is to refresh only when it is useful, for example around an expected journey or after meaningful movement.
 
 ## 11. Privacy
 
