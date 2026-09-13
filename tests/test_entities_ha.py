@@ -293,7 +293,7 @@ async def test_platform_setup_adds_stop_entities(hass) -> None:
     await async_setup_sensors(hass, entry, sensor_add)
     assert sensor_add.call_count == 1
     sensor_entities = sensor_add.call_args.args[0]
-    assert len(sensor_entities) == 14
+    assert len(sensor_entities) == 15
     assert sensor_add.call_args.kwargs["config_subentry_id"] == "fairway-stop"
 
     binary_add = MagicMock()
