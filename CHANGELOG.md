@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.0-beta.2 — in development
+
+### Catchable-bus state
+
+- Added a derived **Catchable bus** sensor for departure/combined stop views.
+- The sensor identifies the first departure whose expected departure time is at or after the current time plus the effective walking time plus an explicit per-stop safety margin.
+- Added configurable **Catchable-bus safety margin**, default 0 minutes, range 0–30 minutes.
+- The margin is deliberately explicit rather than hidden inside the calculation.
+- Live delay can make a previously unreachable journey catchable because the calculation uses the same passenger-facing expected time already produced by BODS.
+- Exposes the immediately following departure as a fallback/reference for automations.
+- Catchability is downstream of the existing ETA/matching engine and never changes Next bus, live matching or timetable ordering.
+- Catchable state is disabled when walking guidance is disabled and is not produced for Arrivals-only views.
+- Catchable summaries intentionally exclude live vehicle coordinates and trip IDs.
+- The calculation uses the complete ordered departure set internally while preserving the established 12-row public dashboard list.
+
 ## 0.7.0-beta.1 — in development
 
 v0.7 starts from the stable v0.6.0 runtime and keeps the conservative BODS/GTFS matching policy unchanged while building higher-level routing/provider and automation capabilities.
