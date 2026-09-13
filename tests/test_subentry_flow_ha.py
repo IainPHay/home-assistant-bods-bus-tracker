@@ -16,6 +16,7 @@ from custom_components.bods_bus_tracker.api import ServiceChoice, StopChoice, St
 from custom_components.bods_bus_tracker.const import (
     AUTO_REGION,
     CONF_API_KEY,
+    CONF_CATCHABLE_MARGIN,
     CONF_DYNAMIC_WALKING_TIME,
     CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
@@ -84,6 +85,7 @@ def _entry(*, with_stop: bool = False) -> MockConfigEntry:
                     CONF_WALKING_TIME: 5,
                     CONF_DYNAMIC_WALKING_TIME: False,
                     CONF_WALKING_TIME_ENTITY: "",
+                    CONF_CATCHABLE_MARGIN: 0,
                     CONF_POLL_INTERVAL: 30,
                 },
                 subentry_id="fairway-stop",
@@ -151,6 +153,7 @@ async def test_add_stop_success(hass) -> None:
                 CONF_STOP_VIEW: STOP_VIEW_DEPARTURES,
                 CONF_WALKING_TIME: 7,
                 CONF_DYNAMIC_WALKING_TIME: False,
+                CONF_CATCHABLE_MARGIN: 3,
                 CONF_POLL_INTERVAL: 30,
             },
         )
@@ -160,6 +163,7 @@ async def test_add_stop_success(hass) -> None:
     assert result2["unique_id"] == "north_east:3100Z199842"
     assert result2["data"][CONF_SERVICES] == ["ANUM|X14", "ANUM|X18"]
     assert result2["data"][CONF_WALKING_TIME] == 7
+    assert result2["data"][CONF_CATCHABLE_MARGIN] == 3
 
 
 async def test_add_stop_requires_service(hass) -> None:
@@ -423,6 +427,7 @@ async def test_reconfigure_stop(hass) -> None:
                 CONF_DYNAMIC_WALKING_TIME: True,
                 CONF_WALKING_TIME_ENTITY: "sensor.walk_to_fairway",
                 CONF_MAX_DYNAMIC_WALKING_TIME: 480,
+                CONF_CATCHABLE_MARGIN: 4,
                 CONF_POLL_INTERVAL: 60,
             },
         )
@@ -433,4 +438,5 @@ async def test_reconfigure_stop(hass) -> None:
     assert updated.data[CONF_STOP_VIEW] == STOP_VIEW_BOTH
     assert updated.data[CONF_WALKING_TIME_ENTITY] == "sensor.walk_to_fairway"
     assert updated.data[CONF_MAX_DYNAMIC_WALKING_TIME] == 480
+    assert updated.data[CONF_CATCHABLE_MARGIN] == 4
     assert updated.data[CONF_POLL_INTERVAL] == 60
