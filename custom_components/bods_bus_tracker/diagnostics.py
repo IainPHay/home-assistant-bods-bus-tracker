@@ -11,6 +11,7 @@ from . import BODSBusConfigEntry
 from .const import CONF_API_KEY
 
 TO_REDACT = {CONF_API_KEY}
+PRIVATE_DIAGNOSTIC_KEYS = {"_departures_for_guidance"}
 
 
 def _strip_coordinates(value: Any) -> Any:
@@ -18,7 +19,7 @@ def _strip_coordinates(value: Any) -> Any:
         return {
             key: _strip_coordinates(item)
             for key, item in value.items()
-            if key not in {"latitude", "longitude"}
+            if key not in {"latitude", "longitude"} | PRIVATE_DIAGNOSTIC_KEYS
         }
     if isinstance(value, list):
         return [_strip_coordinates(item) for item in value]
