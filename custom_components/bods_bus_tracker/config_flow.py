@@ -39,6 +39,7 @@ from .const import (
     BODS_DATASET_URL,
     BODS_VEHICLE_URL,
     CONF_API_KEY,
+    CONF_CATCHABLE_MARGIN,
     CONF_DYNAMIC_WALKING_TIME,
     CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
@@ -51,15 +52,18 @@ from .const import (
     CONF_STOP_VIEW,
     CONF_WALKING_TIME,
     CONF_WALKING_TIME_ENTITY,
+    DEFAULT_CATCHABLE_MARGIN,
     DEFAULT_DYNAMIC_WALKING_TIME,
     DEFAULT_MAX_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
     DOMAIN,
+    MAX_CATCHABLE_MARGIN,
     MAX_MAX_DYNAMIC_WALKING_TIME,
     MAX_POLL_INTERVAL,
     MAX_WALKING_TIME,
+    MIN_CATCHABLE_MARGIN,
     MIN_MAX_DYNAMIC_WALKING_TIME,
     MIN_POLL_INTERVAL,
     MIN_WALKING_TIME,
@@ -560,6 +564,12 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             DEFAULT_MAX_DYNAMIC_WALKING_TIME,
                         )
                     )
+                    self._data[CONF_CATCHABLE_MARGIN] = int(
+                        user_input.get(
+                            CONF_CATCHABLE_MARGIN,
+                            DEFAULT_CATCHABLE_MARGIN,
+                        )
+                    )
                     self._data[CONF_POLL_INTERVAL] = int(
                         user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
                     )
@@ -622,6 +632,18 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         selector.NumberSelectorConfig(
                             min=MIN_MAX_DYNAMIC_WALKING_TIME,
                             max=MAX_MAX_DYNAMIC_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_CATCHABLE_MARGIN,
+                        default=DEFAULT_CATCHABLE_MARGIN,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_CATCHABLE_MARGIN,
+                            max=MAX_CATCHABLE_MARGIN,
                             step=1,
                             mode=selector.NumberSelectorMode.BOX,
                             unit_of_measurement="min",
@@ -701,6 +723,12 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                                 user_input.get(
                                     CONF_MAX_DYNAMIC_WALKING_TIME,
                                     DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                                )
+                            ),
+                            CONF_CATCHABLE_MARGIN: int(
+                                user_input.get(
+                                    CONF_CATCHABLE_MARGIN,
+                                    DEFAULT_CATCHABLE_MARGIN,
                                 )
                             ),
                             CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
@@ -785,6 +813,23 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         selector.NumberSelectorConfig(
                             min=MIN_MAX_DYNAMIC_WALKING_TIME,
                             max=MAX_MAX_DYNAMIC_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_CATCHABLE_MARGIN,
+                        default=int(
+                            subentry.data.get(
+                                CONF_CATCHABLE_MARGIN,
+                                DEFAULT_CATCHABLE_MARGIN,
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_CATCHABLE_MARGIN,
+                            max=MAX_CATCHABLE_MARGIN,
                             step=1,
                             mode=selector.NumberSelectorMode.BOX,
                             unit_of_measurement="min",
