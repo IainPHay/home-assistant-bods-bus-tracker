@@ -4,8 +4,10 @@
 
 A BODS API key is required to retrieve live vehicle data. Treat the key as a credential.
 
-- Do not include API keys in issues, screenshots, logs, or pull requests.
-- Home Assistant diagnostics produced by this integration are designed to redact the API key.
+- Do not include BODS API keys in issues, screenshots, logs, or pull requests.
+- If routed walking is enabled, do not post routing-provider credentials or precise person/device coordinates.
+- Home Assistant diagnostics produced by this integration are designed to redact the BODS API key and live vehicle coordinates.
+- BODS Bus Tracker stores only the selected Home Assistant travel-time entity ID; provider credentials and the provider's origin/destination configuration remain owned by the separate routing integration.
 
 ## Reporting a security issue
 
