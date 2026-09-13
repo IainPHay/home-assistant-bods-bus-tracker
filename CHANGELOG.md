@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.7.0-beta.2 — in development
+## 0.7.0-beta.3 — 2026-09-13
+
+### Diagnostics/privacy hardening
+
+- Fixed a real beta.2 diagnostics leak where the private full departure scratch list `_departures_for_guidance` could survive when walking guidance was disabled and therefore appear in Home Assistant diagnostics.
+- Catchable processing now removes the private full departure sequence before every return path, including `walking_disabled`.
+- Diagnostics independently strip `_departures_for_guidance` as a defence-in-depth safeguard.
+- Added regression coverage for walking-disabled cleanup and diagnostics removal of private guidance state and coordinates.
+- The issue did **not** expose `person` / `device_tracker` coordinates or routing-provider credentials; the leaked rows were internal departure candidates and could include trip IDs.
+- Catchable summaries remain restricted to the intended automation-safe fields and still exclude live vehicle coordinates and trip IDs.
+- Real beta.2 validation confirmed positive catchability, explicit-margin rejection, walking-disabled/arrivals-only suppression, and static fallback feeding catchability.
+- CI policy now avoids duplicate push + pull-request validation runs on feature branches; release tags, `main`, pull requests, nightly checks and manual validation remain covered.
+
+## 0.7.0-beta.2 — 2026-09-13
 
 ### Catchable-bus state
 
