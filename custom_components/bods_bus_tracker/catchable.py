@@ -73,11 +73,14 @@ def apply_catchable_guidance(
         "following_departure": None,
     }
 
+    # The full departure sequence is private scratch state. Always remove it before
+    # any return path, including when walking guidance is disabled.
+    departures = snapshot.pop("_departures_for_guidance", None)
+
     if walking_minutes <= 0:
         snapshot["catchable"] = result
         return snapshot
 
-    departures = snapshot.pop("_departures_for_guidance", None)
     if not isinstance(departures, list):
         departures = snapshot.get("departures")
     if not isinstance(departures, list) or not departures:
