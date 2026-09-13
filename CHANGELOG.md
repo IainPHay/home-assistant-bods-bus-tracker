@@ -1,6 +1,59 @@
 # Changelog
 
-## 0.6.0-beta.7 — in development
+## 0.6.0 — 2026-09-13
+
+Stable v0.6 consolidates the beta.2–beta.7 work into one release focused on routed walking guidance, multi-stop efficiency, Home Assistant quality/lifecycle hardening, and more resilient BODS authentication handling.
+
+### Routed dynamic walking
+
+- Added optional provider-neutral routed walking time per stop using an existing Home Assistant duration sensor.
+- Retained the configured static walking time as an automatic fallback for missing, unavailable, stale, invalid or excessive routed values.
+- Added **Leave by**, **Leave in** and **Leave now** support for the effective routed walking duration without changing ETA/matching logic.
+- Added configurable **Maximum routed walking time** per stop, range 1–1440 minutes, with a backward-compatible default of 120 minutes.
+- Added a self-clearing Home Assistant Repair when a configured routed walking sensor has genuinely been deleted or renamed.
+- Diagnostics do not copy routing-provider credentials or person/device coordinates.
+
+### Shared BODS live feed and authentication resilience
+
+- Reworked live acquisition around one shared operator-level SIRI-VM feed reused by all configured stops.
+- Added a 15-second shared cache, concurrent request de-duplication and at least six seconds between real upstream request starts.
+- Route filtering is performed locally after the shared operator response is received.
+- HTTP 429 remains rate-limited fallback and ordinary HTTP 403 remains access-forbidden fallback rather than forcing reauthentication.
+- Added handling for BODS' real invalid-token behaviour: an explicit `{"detail":"Invalid token."}` response is treated as authentication failure.
+- Ambiguous vehicle-feed 403 responses are confirmed with a minimal secondary token probe before Home Assistant reauthentication is triggered.
+- Initial/reauth API-key validation now uses a minimal BODS dataset request.
+
+### Faster GTFS preparation and reconfiguration
+
+- Stops in the same BODS region now share one parsed GTFS index built from the union of configured services.
+- Added a persistent JSON parsed-index cache keyed by GTFS fingerprint, service date, exact service set and schema version.
+- Normal same-day restarts can restore the parsed timetable from disk instead of rescanning the regional `stop_times.txt`.
+- Optimised stop reconfiguration by pre-filtering raw `stop_times.txt` lines before CSV parsing while preserving exact stop matching and quoted CSV semantics.
+- Live validation reduced The Fairway reconfigure flow to about seven seconds.
+
+### Home Assistant quality and lifecycle hardening
+
+- Added Home Assistant-native tests using `pytest-homeassistant-custom-component` with a CI-enforced 95% coverage floor.
+- Added strict Home Assistant-style mypy validation.
+- Added HACS, Hassfest, version-sync and GTFS cache-policy CI gates.
+- Added translated entities/states/errors, icon translations, device classes and appropriate entity categories/default-disabled diagnostics.
+- Added clean unload cancellation/cache cleanup and persistent GTFS cache removal when the integration is deleted.
+- Bus stops are represented as logical Home Assistant service devices with stale-device cleanup.
+- Added a generic **Leave now notification** automation blueprint.
+- Quality-scale tracker marks all applicable Bronze, Silver, Gold and Platinum rules complete or explicitly exempt; as a custom integration this should be described as quality-scale aligned / Platinum-equivalent, not an official Home Assistant Core tier.
+
+### Validation
+
+- 151 Home Assistant-native tests.
+- 95.59% overall integration coverage on the beta.7 release candidate.
+- HACS validation passed.
+- Hassfest passed.
+- Runtime/manifest version-sync passed.
+- GTFS cache-policy validation passed.
+- Strict mypy passed.
+- Real Home Assistant testing covered The Fairway and Haymarket Bus Station, including natural location-driven HERE walking time, static fallback/recovery, terminus arrivals/departures, live/timetable coexistence, diagnostics redaction, transient live-feed fallback and recovery.
+
+## 0.6.0-beta.7 — 2026-09-12
 
 - Fixed a real BODS authentication edge case discovered during beta.6 validation: BODS can return HTTP 403 for an invalid API token rather than HTTP 401.
 - The shared live-feed client now keeps ordinary 403 responses as `access_forbidden`, but performs a minimal secondary BODS token probe when a vehicle-feed 403 is ambiguous.
