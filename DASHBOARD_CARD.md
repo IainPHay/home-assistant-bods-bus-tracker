@@ -34,7 +34,7 @@ The exact entity ID is created by Home Assistant from the configured stop and ma
 - Late-running values highlighted in red for quick recognition.
 - `held to timetable` when an early vehicle is at the origin of its next journey.
 - Vehicle ID for the headline service when a live match is available.
-- Optional `Leave in` / `Leave now` guidance when a walking time is configured for the stop.
+- Optional `Leave in` / `Leave now` guidance using the stop's **effective walking time**: static walking, valid routed walking, or static fallback when the routed source cannot be trusted.
 - The next five departures in a compact, left-aligned two-column table.
 - A `+N later departures` indication when more services are available.
 - A one-line tracker/data-health, live-tracked count and last-update footer.
@@ -58,3 +58,12 @@ The large rolling departure data remain available live to this card while being 
 ## Real Home Assistant example
 
 ![Example BODS Bus Tracker departure card](docs/images/departure-card.png)
+
+
+## v0.6 routed-walking behaviour
+
+The card does not need to know which routing provider is being used. It reads the effective walking attributes from the BODS **Next bus** entity.
+
+If routed walking is enabled, BODS Bus Tracker decides whether to use the selected duration sensor or the configured static fallback before the card renders anything. Provider-specific setup therefore belongs in the routing integration and BODS stop configuration, not in the Markdown card.
+
+See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md) for the sensor contract and [`TESTING.md`](TESTING.md) for the external test checklist.
