@@ -14,6 +14,22 @@ It combines BODS live **SIRI-VM vehicle positions** with regional **GTFS timetab
 
 > **Important:** BODS does not require operators to publish stop-by-stop predicted arrival times in SIRI-VM. Where no operator prediction is available, this integration estimates delay from live vehicle position and the published timetable. It should be treated as passenger information, not a guaranteed departure time.
 
+## What's new in v0.6
+
+Version 0.6 is a substantial reliability and capability release rather than an ETA-algorithm rewrite. The core conservative BODS/GTFS matching policy remains intact while the surrounding data acquisition, walking guidance, startup/reconfigure performance and Home Assistant lifecycle handling have been hardened.
+
+Key v0.6 changes:
+
+- **Provider-neutral routed walking guidance** using a selected Home Assistant duration sensor, with static fallback and a configurable per-stop maximum routed duration.
+- **Shared operator-level BODS live feeds** so multiple stops/services no longer create one upstream request per stop/route.
+- **Shared persistent GTFS indexes** to avoid repeated regional timetable parsing across stops and normal same-day restarts.
+- **Much faster stop reconfiguration** by avoiding a full CSV parse of every regional `stop_times.txt` row.
+- **Home Assistant quality/lifecycle hardening** including clean unload, translated entities/errors, logical service devices, stale-device cleanup, Repairs, diagnostics redaction and strict automated validation.
+- **Safer authentication handling** so a confirmed invalid BODS token can trigger reauthentication without treating every transient HTTP 403 as a credential failure.
+- **151 Home Assistant-native tests** with a CI-enforced 95% coverage floor; the stable release candidate passed at **95.59%**.
+
+If you are helping test v0.6 on another operator or BODS region, see [`TESTING.md`](TESTING.md).
+
 ## Screenshots
 
 ### Multiple stops under one BODS account
@@ -125,9 +141,10 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
    - **Arrivals** for an arrival-only view;
    - **Arrivals and departures** for a terminus or bus station where the distinction is useful.
 8. Optionally enter the **Static walking time to stop**. This remains the safe fallback for leave guidance.
-9. To use routed walking time, enable **Use routed dynamic walking time** and select a Home Assistant duration sensor created by a routing integration such as HERE Travel Time or Google Maps Travel Time.
-10. Optionally adjust **Maximum routed walking time**; the default is **120 minutes** and longer provider durations fall back to the static walking time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
-11. Choose the live polling interval. **30 seconds** is recommended.
+9. To use routed walking time, enable **Use routed dynamic walking time** and select a Home Assistant **duration sensor**. The integration is provider-neutral: it reads the selected entity's state and does not require it to come from a specific routing integration.
+10. The duration sensor must report a finite non-negative duration in **seconds (`s`)**, **minutes (`min`)** or **hours (`h`)**. HERE Travel Time has been live-validated with a dynamic `person` origin; other providers are compatible in principle when they expose equivalent duration semantics.
+11. Optionally adjust **Maximum routed walking time**; the default is **120 minutes** and longer provider durations fall back to the static walking time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
+12. Choose the live polling interval. **30 seconds** is recommended.
 
 ### Supported regional timetable feeds
 
@@ -277,6 +294,17 @@ For a stop in **Arrivals and departures** mode, the **Next bus** entity can expo
 - `terminus.arrived_vehicles`;
 - `terminus.approaching_arrivals`.
 
+When routed walking is configured, the same entity also exposes the effective walking decision and source health:
+
+- `walking_minutes` — whole minutes currently used for leave guidance;
+- `walking_mode` — `static`, `dynamic`, `static_fallback` or `disabled`;
+- `walking_time_entity` — the selected Home Assistant duration entity;
+- `walking_dynamic_minutes` — raw normalised routed duration when valid;
+- `walking_max_dynamic_minutes` — configured per-stop acceptance ceiling;
+- `walking_fallback` — whether static fallback is currently being used;
+- `walking_source_status` — provider/entity health such as `ok`, `unavailable`, `stale`, `missing` or `invalid`;
+- `leave_by`, `leave_in_minutes` and `leave_now` — calculated from the effective walking time and the next boardable departure.
+
 The large rolling journey lists are intentionally marked as **unrecorded**. They remain available live to cards, templates and automations but are not written into Recorder history, avoiding Home Assistant's state-attribute size limit at busy stops.
 
 `stop_role` can be `origin`, `intermediate`, or `destination`.
@@ -409,13 +437,9 @@ Ordinary HTTP 403 access failures are kept distinct from invalid credentials. If
 
 ## Roadmap
 
-Potential future work includes:
+The next development cycle is tracked in [issue #8](https://github.com/IainPHay/home-assistant-bods-bus-tracker/issues/8). Planned v0.7 work starts with broader routed-walking provider portability/documentation, followed by higher-level catchable-bus and journey-state automation ideas.
 
-- broader matching when SIRI aimed-time fields are incomplete;
-- locality/postcode stop search;
-- historical route-segment travel-time learning;
-- optional traffic/roadworks anomaly flags;
-- wider operator/region regression tests;
+Other longer-term possibilities include broader matching when SIRI aimed-time fields are incomplete, locality/postcode stop search, historical route-segment learning and wider operator/region regression testing.
 
 ## Removing the integration
 
@@ -439,10 +463,14 @@ Please open a GitHub issue and include:
 - BODS region;
 - stop ATCO code;
 - affected route/operator;
+- stop view and selected services;
+- whether routed walking is enabled and, if relevant, the routing integration/entity type used;
 - approximate date/time of the problem;
 - downloaded Home Assistant integration diagnostics, where relevant.
 
-**Do not post your BODS API key.**
+**Do not post your BODS API key.** If a routing provider or person/device tracker is involved, also avoid posting provider credentials or precise personal-location data unless you have intentionally redacted it first.
+
+For structured cross-region/operator testing, use the checklist and report template in [`TESTING.md`](TESTING.md).
 
 ## Data sources and attribution
 
