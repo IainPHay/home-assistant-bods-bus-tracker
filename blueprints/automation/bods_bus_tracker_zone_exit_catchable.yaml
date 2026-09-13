@@ -1,0 +1,175 @@
+blueprint:
+  name: BODS Bus Tracker - Zone exit catchable bus notification
+  description: >
+    When a person leaves a selected Home Assistant zone, use the trusted
+    BODS Bus Tracker Catchable bus sensor to build a passenger-facing message
+    containing the first catchable departure and the following departure.
+    Catchability, walking time, and the configured safety margin are decided
+    by BODS Bus Tracker; this blueprint does not recalculate them.
+  domain: automation
+  author: IainPHay
+  homeassistant:
+    min_version: 2026.8.0
+  input:
+    trigger_settings:
+      name: Trigger
+      icon: mdi:map-marker-radius
+      description: Choose who is travelling and which zone exit starts the check.
+      input:
+        traveller:
+          name: Traveller
+          description: Person whose departure from the origin zone triggers the automation.
+          selector:
+            entity:
+              filter:
+                - domain: person
+        origin_zone:
+          name: Origin zone
+          description: Notify when the selected traveller leaves this zone.
+          selector:
+            entity:
+              filter:
+                - domain: zone
+
+    bus_settings:
+      name: Bus stop
+      icon: mdi:bus-clock
+      description: >
+        Select the BODS Bus Tracker Catchable bus sensor for the boarding stop.
+        Configure walking time and the Catchable-bus safety margin on the stop itself.
+      input:
+        catchable_bus_entity:
+          name: Catchable bus
+          description: >
+            Select the Catchable bus sensor. The blueprint only acts when its
+            status is `ok` and a departure has already been proven catchable.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  integration: bods_bus_tracker
+
+    notification_settings:
+      name: Notifications
+      icon: mdi:message-badge-outline
+      description: >
+        Configure one required notification/announcement action and, optionally,
+        a second. The actions can use the variables `{{ bods_title }}` and
+        `{{ bods_message }}` plus the structured `bods_*` variables described
+        in the project documentation.
+      input:
+        notification_title:
+          name: Notification title
+          description: Exposed to notification actions as `{{ bods_title }}`.
+          default: Bus options
+          selector:
+            text: {}
+        primary_notification_action:
+          name: Primary notification action
+          description: >
+            Required action for the traveller, such as a Companion App notification.
+            Use `{{ bods_title }}` for the title and `{{ bods_message }}` for the message.
+          selector:
+            action: {}
+        secondary_notification_action:
+          name: Optional second notification action
+          description: >
+            Optional second recipient/action. Leave empty if it is not required.
+          default: []
+          selector:
+            action: {}
+
+triggers:
+  - trigger: zone
+    entity_id: !input traveller
+    zone: !input origin_zone
+    event: leave
+
+variables:
+  catchable_entity: !input catchable_bus_entity
+  title_input: !input notification_title
+  catchable_status: "{{ state_attr(catchable_entity, 'status') }}"
+  departure: "{{ state_attr(catchable_entity, 'departure') or {} }}"
+  following_departure: "{{ state_attr(catchable_entity, 'following_departure') or {} }}"
+  walking_minutes: "{{ state_attr(catchable_entity, 'walking_minutes') }}"
+  margin_minutes: "{{ state_attr(catchable_entity, 'margin_minutes') }}"
+  required_lead_minutes: "{{ state_attr(catchable_entity, 'required_lead_minutes') }}"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{
+        catchable_status == 'ok'
+        and states(catchable_entity) not in ['unknown', 'unavailable', 'none', '']
+        and departure is mapping
+        and departure.get('route')
+        and (departure.get('expected') or departure.get('scheduled'))
+      }}
+
+actions:
+  - alias: Prepare notification variables
+    variables:
+      bods_title: "{{ title_input }}"
+      bods_route: "{{ departure.get('route') }}"
+      bods_destination: "{{ departure.get('destination') }}"
+      bods_expected: "{{ departure.get('expected') or departure.get('scheduled') }}"
+      bods_scheduled: "{{ departure.get('scheduled') }}"
+      bods_realtime: "{{ departure.get('realtime', false) }}"
+      bods_source: "{{ departure.get('source') }}"
+      bods_timing_status: "{{ departure.get('timing_status') }}"
+      bods_delay_minutes: "{{ departure.get('delay_minutes') }}"
+      bods_walking_minutes: "{{ walking_minutes }}"
+      bods_margin_minutes: "{{ margin_minutes }}"
+      bods_required_lead_minutes: "{{ required_lead_minutes }}"
+      bods_departure: "{{ departure }}"
+      bods_following_departure: "{{ following_departure }}"
+      bods_message: >-
+        {% set expected_raw = departure.get('expected') or departure.get('scheduled') %}
+        {% set scheduled_raw = departure.get('scheduled') %}
+        {% set expected_dt = as_datetime(expected_raw) if expected_raw else none %}
+        {% set scheduled_dt = as_datetime(scheduled_raw) if scheduled_raw else none %}
+        {% set expected_text = as_local(expected_dt).strftime('%H:%M') if expected_dt else 'time unavailable' %}
+        {% set scheduled_text = as_local(scheduled_dt).strftime('%H:%M') if scheduled_dt else none %}
+        {% set route = departure.get('route') or 'Bus' %}
+        {% set destination = departure.get('destination') %}
+        {% set minutes = departure.get('minutes') %}
+        {% set live = departure.get('realtime', false) %}
+        {% set timing = departure.get('timing_status') %}
+        {% set effective_delay = departure.get('delay_minutes') %}
+        {% set raw_delay = departure.get('raw_delay_minutes') %}
+        {% set display_delay = raw_delay if timing == 'early' and raw_delay is number else effective_delay %}
+        {% set clamped = departure.get('prediction_clamped', false) %}
+        {% set walk = walking_minutes | int(0) %}
+        {% set margin = margin_minutes | int(0) %}
+        {% set lead = required_lead_minutes | int(0) %}
+        {% set next = following_departure if following_departure is mapping else {} %}
+        {% set next_expected_raw = next.get('expected') or next.get('scheduled') %}
+        {% set next_scheduled_raw = next.get('scheduled') %}
+        {% set next_expected_dt = as_datetime(next_expected_raw) if next_expected_raw else none %}
+        {% set next_scheduled_dt = as_datetime(next_scheduled_raw) if next_scheduled_raw else none %}
+        {% set next_expected_text = as_local(next_expected_dt).strftime('%H:%M') if next_expected_dt else none %}
+        {% set next_scheduled_text = as_local(next_scheduled_dt).strftime('%H:%M') if next_scheduled_dt else none %}
+        Catchable: {{ route }}{% if destination %} to {{ destination }}{% endif %}
+        — expected {{ expected_text }}{% if scheduled_text %}; scheduled {{ scheduled_text }}{% endif %}
+        {% if minutes is number %} · {{ minutes | int }} min away{% endif %}
+        · {% if live %}live{% if timing %}, {{ timing | replace('_', ' ') }}{% endif %}
+        {% if display_delay is number and display_delay | float != 0 %} ({{ display_delay | abs | round(1) }} min
+        {{ 'late' if display_delay | float > 0 else 'early' }}){% endif %}
+        {% if clamped %}, held to timetable{% endif %}{% else %}timetable{% endif %}.
+        Walking: {{ walk }} min{% if margin > 0 %} + {{ margin }} min margin{% endif %}
+        ({{ lead }} min required lead).
+        {% if next and next_expected_text %}
+        Following: {{ next.get('route') or 'bus' }}{% if next.get('destination') %} to
+        {{ next.get('destination') }}{% endif %} — expected {{ next_expected_text }}
+        {% if next_scheduled_text %}; scheduled {{ next_scheduled_text }}{% endif %}
+        · {{ 'live' if next.get('realtime', false) else 'timetable' }}.
+        {% endif %}
+
+  - alias: Notify primary recipient
+    sequence: !input primary_notification_action
+
+  - alias: Notify optional second recipient
+    sequence: !input secondary_notification_action
+
+mode: single
+max_exceeded: silent
