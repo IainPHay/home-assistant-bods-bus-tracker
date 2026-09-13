@@ -61,13 +61,13 @@ For an ordinary boarding stop, use the separate generic departure card instead:
 
 ## Real Home Assistant example
 
-The following real `0.5.0-beta.2` Home Assistant test at Haymarket Bus Station shows the final `0.5.0` terminus presentation: simultaneous **At stand** and **Approaching** states, separate departures/arrivals, and `previous_stop` displayed as **Haymarket Barras Bridge**.
+The following real Home Assistant test at Haymarket Bus Station shows the terminus presentation introduced in v0.5 and retained in v0.6: simultaneous **At stand** and **Approaching** states, separate departures/arrivals, and `previous_stop` displayed as **Haymarket Barras Bridge**.
 
 ![BODS Bus Tracker terminus card at Haymarket Bus Station](https://github.com/user-attachments/assets/6884cf1b-d2ec-4d6c-9c12-7be9fae3f2ef)
 
 ## Real-world validation
 
-Before the `0.5.0` release, the terminus behaviour was exercised live at Haymarket Bus Station with Arriva North East X14/X15/X16/X18 services. Testing confirmed:
+The terminus behaviour was exercised live at Haymarket Bus Station with Arriva North East X14/X15/X16/X18 services during the v0.5 work and regression-tested through the v0.6 cycle. Testing confirmed:
 
 - existing intermediate-stop behaviour remained unchanged at The Fairway;
 - arrivals and departures were separated correctly;
@@ -77,3 +77,12 @@ Before the `0.5.0` release, the terminus behaviour was exercised live at Haymark
 - an incoming vehicle was not falsely assumed to form a later outbound trip;
 - `previous_stop` correctly resolved to **Haymarket Barras Bridge**;
 - the Recorder oversized-attribute warning no longer occurred after the transient rich attributes were marked unrecorded.
+
+
+## v0.6 notes
+
+v0.6 does not change the conservative terminus linking rule. The main underlying changes are shared BODS live-feed acquisition, shared/persistent GTFS indexing, lifecycle/diagnostic hardening and optional routed walking guidance.
+
+That means a terminus may still contain a mixture of live and timetable-only rows even while **Data status** is `ok`. A timetable-only departure simply means that journey has not yet been matched to a trustworthy live vehicle.
+
+For cross-operator/region testing, see [`TESTING.md`](TESTING.md).
