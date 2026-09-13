@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0-beta.1 — in development
+
+v0.7 starts from the stable v0.6.0 runtime and keeps the conservative BODS/GTFS matching policy unchanged while building higher-level routing/provider and automation capabilities.
+
+### Provider-portability foundation
+
+- Expose the monitored stop's public GTFS `latitude` and `longitude` inside the existing **Next bus** `stop` attribute when timetable metadata are available.
+- Keep stop coordinates separate from traveller/person coordinates: only the public bus-stop location is exposed.
+- This makes it easier to configure HERE or alternative Home Assistant routing providers without manually looking up the boarding-point coordinates.
+- Routed walking remains provider-neutral: BODS Bus Tracker still consumes a Home Assistant duration sensor rather than storing third-party routing credentials or calling a provider directly.
+
+### Development direction
+
+- Alternative routing providers are being evaluated before one is recommended for v0.7. The previously available OpenRouteService HACS custom component is currently unmaintained, so it is not being adopted blindly as the reference path.
+- Catchable-bus notifications and boarding/journey inference remain later v0.7 work and will only be promoted to trusted automations after their state logic is validated.
+
 ## 0.6.0 — 2026-09-13
 
 Stable v0.6 consolidates the beta.2–beta.7 work into one release focused on routed walking guidance, multi-stop efficiency, Home Assistant quality/lifecycle hardening, and more resilient BODS authentication handling.
