@@ -27,7 +27,7 @@ def _summary(row: dict[str, Any]) -> dict[str, Any]:
     """Return a privacy-safe, automation-friendly subset of a departure row."""
     keys = (
         "route",
-        "operator",
+        "operator_name",
         "operator_noc",
         "service_key",
         "destination",
