@@ -53,3 +53,46 @@ jobs:
               )
           print(f'Version sync OK: {manifest_version}')
           PY
+
+
+  validate-cache-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run GTFS cache invalidation regression tests
+        run: python -m unittest discover -s tests -p 'test_gtfs_cache_policy.py' -v
+
+
+  validate-ha-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install Home Assistant test dependencies
+        run: python -m pip install -r requirements_test.txt
+      - name: Run Home Assistant-native tests with coverage
+        run: >
+          pytest -q
+          --cov=custom_components.bods_bus_tracker
+          --cov-report=term-missing
+          --cov-report=xml
+          --cov-fail-under=95
+
+
+  validate-strict-typing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install Home Assistant typing dependencies
+        run: python -m pip install -r requirements_test.txt
+      - name: Run strict mypy validation
+        run: mypy --config-file mypy.ini custom_components/bods_bus_tracker

@@ -36,8 +36,11 @@ from .api import (
 )
 from .const import (
     AUTO_REGION,
+    BODS_DATASET_URL,
     BODS_VEHICLE_URL,
     CONF_API_KEY,
+    CONF_DYNAMIC_WALKING_TIME,
+    CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
     CONF_SERVICES,
@@ -47,48 +50,73 @@ from .const import (
     CONF_STOP_SELECTION,
     CONF_STOP_VIEW,
     CONF_WALKING_TIME,
+    CONF_WALKING_TIME_ENTITY,
+    DEFAULT_DYNAMIC_WALKING_TIME,
+    DEFAULT_MAX_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_STOP_VIEW,
     DEFAULT_WALKING_TIME,
-    STOP_VIEW_ARRIVALS,
-    STOP_VIEW_BOTH,
-    STOP_VIEW_DEPARTURES,
     DOMAIN,
+    MAX_MAX_DYNAMIC_WALKING_TIME,
     MAX_POLL_INTERVAL,
     MAX_WALKING_TIME,
+    MIN_MAX_DYNAMIC_WALKING_TIME,
     MIN_POLL_INTERVAL,
     MIN_WALKING_TIME,
     REGIONS,
     REGION_CENTRES,
     STOP_SEARCH_LIMIT,
+    STOP_VIEW_ARRIVALS,
+    STOP_VIEW_BOTH,
+    STOP_VIEW_DEPARTURES,
     SUBENTRY_TYPE_STOP,
     VERSION,
 )
 from .gtfs import GTFSDownloadError, async_ensure_gtfs
+from .live_feed_model import (
+    classify_bods_http_response,
+    classify_bods_http_status,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 
+def _config_error_from_http_status(status: int) -> str:
+    """Map a BODS HTTP response to a user-facing config-flow error."""
+    result = classify_bods_http_status(status)
+    if result == "authentication_failed":
+        return "invalid_auth"
+    if result == "access_forbidden":
+        return "access_forbidden"
+    if result == "rate_limited":
+        return "rate_limited"
+    return "cannot_connect"
+
+
+async def _async_raise_for_bods_response(response: Any) -> None:
+    """Raise a response error, preserving BODS' explicit invalid-token signal."""
+    payload = await response.read()
+    if response.status < 400:
+        return
+    result = classify_bods_http_response(response.status, payload)
+    status = 401 if result == "authentication_failed" else response.status
+    raise ClientResponseError(response.request_info, response.history, status=status)
+
+
 async def _async_validate_api_key_generic(hass: HomeAssistant, api_key: str) -> None:
-    """Validate a key without downloading a useful national vehicle feed."""
+    """Validate the API token with a minimal BODS dataset request."""
     session = async_get_clientsession(hass)
     params = {
-        "operatorRef": "__bods_bus_tracker_auth_check__",
-        "lineRef": "__bods_bus_tracker_auth_check__",
         "api_key": api_key,
+        "limit": 1,
     }
-    url = f"{BODS_VEHICLE_URL}?{urllib.parse.urlencode(params)}"
+    url = f"{BODS_DATASET_URL}?{urllib.parse.urlencode(params)}"
     async with session.get(
         url,
         timeout=ClientTimeout(total=20),
         headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
     ) as response:
-        # Authentication failure is the only client error which matters here. A
-        # provider-side 400 for deliberately empty filters still proves the key was
-        # accepted; 429/5xx means BODS is currently unavailable.
-        if response.status in (401, 403) or response.status == 429 or response.status >= 500:
-            response.raise_for_status()
-        await response.read()
+        await _async_raise_for_bods_response(response)
 
 
 async def _async_validate_api_key(
@@ -108,8 +136,21 @@ async def _async_validate_api_key(
         timeout=ClientTimeout(total=20),
         headers={"User-Agent": f"Home-Assistant-BODS-Bus-Tracker/{VERSION}"},
     ) as response:
-        response.raise_for_status()
-        await response.read()
+        payload = await response.read()
+        if response.status == 403:
+            result = classify_bods_http_response(response.status, payload)
+            if result == "access_forbidden":
+                try:
+                    await _async_validate_api_key_generic(hass, api_key)
+                except ClientResponseError as exc:
+                    if exc.status == 401:
+                        raise
+        if response.status >= 400:
+            result = classify_bods_http_response(response.status, payload)
+            status = 401 if result == "authentication_failed" else response.status
+            raise ClientResponseError(
+                response.request_info, response.history, status=status
+            )
 
 
 def _distance_sq(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -122,8 +163,6 @@ def _region_search_order(hass: HomeAssistant) -> list[str]:
     """Order regions with the HA installation's nearest regional centre first."""
     lat = hass.config.latitude
     lon = hass.config.longitude
-    if lat is None or lon is None:
-        return list(REGIONS)
     return sorted(
         REGIONS,
         key=lambda region: _distance_sq(
@@ -174,6 +213,11 @@ def _stop_search_schema(default_region: str = AUTO_REGION) -> vol.Schema:
             ),
         }
     )
+
+
+def _walking_time_entity_selector() -> selector.EntitySelector:
+    """Return a generic sensor selector for provider-neutral routed duration."""
+    return selector.EntitySelector(selector.EntitySelectorConfig(domain="sensor"))
 
 
 async def _async_auto_detect_stop(
@@ -227,9 +271,7 @@ class BODSBusTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
             try:
                 await _async_validate_api_key_generic(self.hass, api_key)
             except ClientResponseError as exc:
-                errors["base"] = (
-                    "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
-                )
+                errors["base"] = _config_error_from_http_status(exc.status)
             except (ClientError, TimeoutError):
                 errors["base"] = "cannot_connect"
             except Exception:
@@ -277,14 +319,12 @@ class BODSBusTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return supported stop subentry flows."""
         return {SUBENTRY_TYPE_STOP: BODSStopSubentryFlow}
 
-    @override
     async def async_step_reauth(
         self, entry_data: Mapping[str, Any]
     ) -> ConfigFlowResult:
         """Start BODS API-key reauthentication."""
         return await self.async_step_reauth_confirm()
 
-    @override
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -296,9 +336,7 @@ class BODSBusTrackerConfigFlow(ConfigFlow, domain=DOMAIN):
             try:
                 await _async_validate_api_key_generic(self.hass, api_key)
             except ClientResponseError as exc:
-                errors["base"] = (
-                    "invalid_auth" if exc.status in (401, 403) else "cannot_connect"
-                )
+                errors["base"] = _config_error_from_http_status(exc.status)
             except (ClientError, TimeoutError):
                 errors["base"] = "cannot_connect"
             except Exception:
@@ -354,7 +392,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
         self._discovery = discovery
         return await self.async_step_services()
 
-    @override
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -430,7 +467,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
             errors=errors,
         )
 
-    @override
     async def async_step_stop_select(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -469,7 +505,6 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
             errors=errors,
         )
 
-    @override
     async def async_step_services(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
@@ -478,8 +513,18 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             selected = list(user_input[CONF_SERVICES])
+            dynamic_walking = bool(
+                user_input.get(
+                    CONF_DYNAMIC_WALKING_TIME, DEFAULT_DYNAMIC_WALKING_TIME
+                )
+            )
+            walking_entity = str(
+                user_input.get(CONF_WALKING_TIME_ENTITY) or ""
+            ).strip()
             if not selected:
                 errors[CONF_SERVICES] = "select_service"
+            elif dynamic_walking and not walking_entity:
+                errors[CONF_WALKING_TIME_ENTITY] = "walking_time_entity_required"
             else:
                 entry = self._get_entry()
                 try:
@@ -487,11 +532,7 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         self.hass, entry.data[CONF_API_KEY], selected[0]
                     )
                 except ClientResponseError as exc:
-                    errors["base"] = (
-                        "invalid_auth"
-                        if exc.status in (401, 403)
-                        else "cannot_connect"
-                    )
+                    errors["base"] = _config_error_from_http_status(exc.status)
                 except (ClientError, TimeoutError):
                     errors["base"] = "cannot_connect"
                 except Exception:
@@ -510,6 +551,14 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                     )
                     self._data[CONF_WALKING_TIME] = int(
                         user_input.get(CONF_WALKING_TIME, DEFAULT_WALKING_TIME)
+                    )
+                    self._data[CONF_DYNAMIC_WALKING_TIME] = dynamic_walking
+                    self._data[CONF_WALKING_TIME_ENTITY] = walking_entity
+                    self._data[CONF_MAX_DYNAMIC_WALKING_TIME] = int(
+                        user_input.get(
+                            CONF_MAX_DYNAMIC_WALKING_TIME,
+                            DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                        )
                     )
                     self._data[CONF_POLL_INTERVAL] = int(
                         user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
@@ -562,6 +611,23 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         )
                     ),
                     vol.Optional(
+                        CONF_DYNAMIC_WALKING_TIME,
+                        default=DEFAULT_DYNAMIC_WALKING_TIME,
+                    ): selector.BooleanSelector(),
+                    vol.Optional(CONF_WALKING_TIME_ENTITY): _walking_time_entity_selector(),
+                    vol.Optional(
+                        CONF_MAX_DYNAMIC_WALKING_TIME,
+                        default=DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_MAX_DYNAMIC_WALKING_TIME,
+                            max=MAX_MAX_DYNAMIC_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
+                    vol.Optional(
                         CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
@@ -577,11 +643,10 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
             errors=errors,
         )
 
-    @override
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
-        """Change services, stop view, walking time and poll interval for one stop."""
+        """Change services, stop view, walking guidance and poll interval."""
         entry = self._get_entry()
         subentry = self._get_reconfigure_subentry()
         errors: dict[str, str] = {}
@@ -598,19 +663,25 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
 
         if user_input is not None:
             selected = list(user_input[CONF_SERVICES])
+            dynamic_walking = bool(
+                user_input.get(
+                    CONF_DYNAMIC_WALKING_TIME, DEFAULT_DYNAMIC_WALKING_TIME
+                )
+            )
+            walking_entity = str(
+                user_input.get(CONF_WALKING_TIME_ENTITY) or ""
+            ).strip()
             if not selected:
                 errors[CONF_SERVICES] = "select_service"
+            elif dynamic_walking and not walking_entity:
+                errors[CONF_WALKING_TIME_ENTITY] = "walking_time_entity_required"
             else:
                 try:
                     await _async_validate_api_key(
                         self.hass, entry.data[CONF_API_KEY], selected[0]
                     )
                 except ClientResponseError as exc:
-                    errors["base"] = (
-                        "invalid_auth"
-                        if exc.status in (401, 403)
-                        else "cannot_connect"
-                    )
+                    errors["base"] = _config_error_from_http_status(exc.status)
                 except (ClientError, TimeoutError):
                     errors["base"] = "cannot_connect"
                 except Exception:
@@ -624,9 +695,27 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                             CONF_SERVICES: selected,
                             CONF_STOP_VIEW: str(user_input[CONF_STOP_VIEW]),
                             CONF_WALKING_TIME: int(user_input[CONF_WALKING_TIME]),
+                            CONF_DYNAMIC_WALKING_TIME: dynamic_walking,
+                            CONF_WALKING_TIME_ENTITY: walking_entity,
+                            CONF_MAX_DYNAMIC_WALKING_TIME: int(
+                                user_input.get(
+                                    CONF_MAX_DYNAMIC_WALKING_TIME,
+                                    DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                                )
+                            ),
                             CONF_POLL_INTERVAL: int(user_input[CONF_POLL_INTERVAL]),
                         },
                     )
+
+        entity_marker = vol.Optional(CONF_WALKING_TIME_ENTITY)
+        existing_entity = str(
+            subentry.data.get(CONF_WALKING_TIME_ENTITY) or ""
+        ).strip()
+        if existing_entity:
+            entity_marker = vol.Optional(
+                CONF_WALKING_TIME_ENTITY,
+                description={"suggested_value": existing_entity},
+            )
 
         return self.async_show_form(
             step_id="reconfigure",
@@ -669,6 +758,33 @@ class BODSStopSubentryFlow(ConfigSubentryFlow):
                         selector.NumberSelectorConfig(
                             min=MIN_WALKING_TIME,
                             max=MAX_WALKING_TIME,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                            unit_of_measurement="min",
+                        )
+                    ),
+                    vol.Required(
+                        CONF_DYNAMIC_WALKING_TIME,
+                        default=bool(
+                            subentry.data.get(
+                                CONF_DYNAMIC_WALKING_TIME,
+                                DEFAULT_DYNAMIC_WALKING_TIME,
+                            )
+                        ),
+                    ): selector.BooleanSelector(),
+                    entity_marker: _walking_time_entity_selector(),
+                    vol.Optional(
+                        CONF_MAX_DYNAMIC_WALKING_TIME,
+                        default=int(
+                            subentry.data.get(
+                                CONF_MAX_DYNAMIC_WALKING_TIME,
+                                DEFAULT_MAX_DYNAMIC_WALKING_TIME,
+                            )
+                        ),
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_MAX_DYNAMIC_WALKING_TIME,
+                            max=MAX_MAX_DYNAMIC_WALKING_TIME,
                             step=1,
                             mode=selector.NumberSelectorMode.BOX,
                             unit_of_measurement="min",

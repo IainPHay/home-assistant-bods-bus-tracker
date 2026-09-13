@@ -23,7 +23,9 @@
     "error": {
       "cannot_connect": "Unable to connect to BODS.",
       "invalid_auth": "The BODS API key was rejected.",
-      "unknown": "Unexpected error. Check the Home Assistant log for details."
+      "unknown": "Unexpected error. Check the Home Assistant log for details.",
+      "access_forbidden": "BODS refused access to the request. Check the account status or try again later.",
+      "rate_limited": "BODS is temporarily rate limiting requests. Wait a short time and try again."
     },
     "abort": {
       "account_already_configured": "A BODS account is already configured. Add another bus stop to the existing BODS Bus Tracker entry instead.",
@@ -64,28 +66,40 @@
             "services": "Services",
             "stop_view": "Stop view",
             "poll_interval": "Live update interval",
-            "walking_time": "Walking time to stop"
+            "walking_time": "Static walking time to stop",
+            "dynamic_walking_time": "Use routed dynamic walking time",
+            "walking_time_entity": "Travel-time sensor",
+            "max_dynamic_walking_time": "Maximum routed walking time"
           },
           "data_description": {
             "services": "Available route/operator combinations discovered from the regional GTFS timetable. Destination/headsigns are shown where BODS supplies them.",
             "stop_view": "Departures preserves the existing boarding-time behaviour at intermediate stops. Arrivals shows buses reaching the stop. Arrivals and departures is intended for termini; Next bus and Leave now remain tied to the next boardable departure.",
             "poll_interval": "How often to poll BODS vehicle locations for this stop. 30 seconds is recommended.",
-            "walking_time": "Minutes needed to walk from your usual starting point to this boarding stop. Set to 0 to disable Leave by/Leave now guidance. Include any personal margin you want."
+            "walking_time": "Fallback minutes from your usual starting point to this boarding stop. Set to 0 if you want leave guidance disabled whenever the dynamic travel-time sensor is unavailable.",
+            "dynamic_walking_time": "When enabled, use a Home Assistant travel-time sensor (for example HERE Travel Time or Google Maps Travel Time in walking mode) instead of the static value whenever the sensor is valid.",
+            "walking_time_entity": "Select the sensor whose state is the routed walking duration. Supported duration units are seconds, minutes and hours. The sensor is read only; BODS Bus Tracker does not call the routing provider or store its API key.",
+            "max_dynamic_walking_time": "Routed durations above this value are treated as invalid and use the static fallback instead. Default: 120 minutes."
           }
         },
         "reconfigure": {
           "title": "Configure bus stop",
-          "description": "Change the services, stop view, walking time and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
+          "description": "Change the services, stop view, walking guidance and polling interval for {stop_name} ({stop_atco}). To monitor a different boarding point, add another stop and remove this one.",
           "data": {
             "services": "Services",
             "stop_view": "Stop view",
             "poll_interval": "Live update interval",
-            "walking_time": "Walking time to stop"
+            "walking_time": "Static walking time to stop",
+            "dynamic_walking_time": "Use routed dynamic walking time",
+            "walking_time_entity": "Travel-time sensor",
+            "max_dynamic_walking_time": "Maximum routed walking time"
           },
           "data_description": {
             "stop_view": "Departures is recommended for ordinary intermediate boarding stops. Use Arrivals or Arrivals and departures where the distinction is useful, especially at a terminus.",
             "poll_interval": "Each stop can use its own live update interval. 30 seconds is recommended.",
-            "walking_time": "Minutes needed to walk from your usual starting point to this boarding stop. Set to 0 to disable Leave by/Leave now guidance."
+            "walking_time": "Fallback walking minutes. Existing static behaviour is unchanged when routed dynamic walking time is disabled.",
+            "dynamic_walking_time": "Use the selected Home Assistant routed travel-time sensor when valid, falling back automatically to the static walking time if it is unavailable, invalid or stale.",
+            "walking_time_entity": "A duration sensor created by a routing integration such as HERE Travel Time or Google Maps Travel Time. Configure that provider separately with walking mode and a dynamic person/device-tracker origin.",
+            "max_dynamic_walking_time": "Routed durations above this value are treated as invalid and use the static fallback instead. Default: 120 minutes."
           }
         }
       },
@@ -100,7 +114,10 @@
         "stop_search_no_results": "No stops matched that name or code in the selected region.",
         "stop_search_required": "Enter a stop name or code.",
         "stop_selection_invalid": "Select one of the discovered stops.",
-        "unknown": "Unexpected error. Check the Home Assistant log for details."
+        "walking_time_entity_required": "Select a travel-time sensor when routed dynamic walking time is enabled.",
+        "unknown": "Unexpected error. Check the Home Assistant log for details.",
+        "access_forbidden": "BODS refused access to the selected service. Check the account status or try again later.",
+        "rate_limited": "BODS is temporarily rate limiting requests. Wait a short time and try again."
       },
       "abort": {
         "already_configured": "This stop is already configured in this BODS account.",
@@ -108,6 +125,85 @@
         "reconfigure_successful": "Bus stop configuration updated successfully.",
         "unknown": "Unexpected error. Check the Home Assistant log for details."
       }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "next_bus": {
+        "name": "Next bus"
+      },
+      "next_bus_minutes": {
+        "name": "Next bus minutes"
+      },
+      "next_bus_expected": {
+        "name": "Next bus expected"
+      },
+      "next_bus_scheduled": {
+        "name": "Next bus scheduled"
+      },
+      "next_bus_delay": {
+        "name": "Next bus delay"
+      },
+      "next_bus_timing": {
+        "name": "Next bus timing",
+        "state": {
+          "early": "Early",
+          "on_time": "On time",
+          "late": "Late",
+          "timetable": "Timetable"
+        }
+      },
+      "leave_by": {
+        "name": "Leave by"
+      },
+      "leave_in": {
+        "name": "Leave in"
+      },
+      "next_service": {
+        "name": "Next {route}"
+      },
+      "next_service_operator": {
+        "name": "Next {route} ({operator})"
+      },
+      "data_status": {
+        "name": "Data status",
+        "state": {
+          "ok": "OK",
+          "degraded": "Degraded",
+          "scheduled_only": "Scheduled only"
+        }
+      },
+      "last_update": {
+        "name": "Last update"
+      },
+      "live_vehicles": {
+        "name": "Live vehicles"
+      },
+      "gtfs_matches": {
+        "name": "GTFS matches"
+      }
+    },
+    "binary_sensor": {
+      "leave_now": {
+        "name": "Leave now"
+      }
+    }
+  },
+  "exceptions": {
+    "api_key_rejected": {
+      "message": "The BODS API key was rejected."
+    },
+    "gtfs_prepare_failed": {
+      "message": "Unable to prepare the regional GTFS timetable for {stop}. Home Assistant will retry automatically."
+    },
+    "gtfs_update_failed": {
+      "message": "Unable to refresh BODS timetable data. Home Assistant will retry automatically."
+    }
+  },
+  "issues": {
+    "walking_time_entity_missing": {
+      "title": "Dynamic walking-time sensor is missing",
+      "description": "The configured travel-time entity `{entity_id}` for **{stop}** no longer exists. BODS Bus Tracker is using the configured static walking-time fallback. Reconfigure this bus stop and select an existing duration sensor, or disable routed dynamic walking time."
     }
   }
 }

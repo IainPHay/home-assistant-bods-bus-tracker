@@ -1,5 +1,126 @@
 # Changelog
 
+## 0.6.0 — 2026-09-13
+
+Stable v0.6 consolidates the beta.2–beta.7 work into one release focused on routed walking guidance, multi-stop efficiency, Home Assistant quality/lifecycle hardening, and more resilient BODS authentication handling.
+
+### Routed dynamic walking
+
+- Added optional provider-neutral routed walking time per stop using an existing Home Assistant duration sensor.
+- Retained the configured static walking time as an automatic fallback for missing, unavailable, stale, invalid or excessive routed values.
+- Added **Leave by**, **Leave in** and **Leave now** support for the effective routed walking duration without changing ETA/matching logic.
+- Added configurable **Maximum routed walking time** per stop, range 1–1440 minutes, with a backward-compatible default of 120 minutes.
+- Added a self-clearing Home Assistant Repair when a configured routed walking sensor has genuinely been deleted or renamed.
+- Diagnostics do not copy routing-provider credentials or person/device coordinates.
+
+### Shared BODS live feed and authentication resilience
+
+- Reworked live acquisition around one shared operator-level SIRI-VM feed reused by all configured stops.
+- Added a 15-second shared cache, concurrent request de-duplication and at least six seconds between real upstream request starts.
+- Route filtering is performed locally after the shared operator response is received.
+- HTTP 429 remains rate-limited fallback and ordinary HTTP 403 remains access-forbidden fallback rather than forcing reauthentication.
+- Added handling for BODS' real invalid-token behaviour: an explicit `{"detail":"Invalid token."}` response is treated as authentication failure.
+- Ambiguous vehicle-feed 403 responses are confirmed with a minimal secondary token probe before Home Assistant reauthentication is triggered.
+- Initial/reauth API-key validation now uses a minimal BODS dataset request.
+
+### Faster GTFS preparation and reconfiguration
+
+- Stops in the same BODS region now share one parsed GTFS index built from the union of configured services.
+- Added a persistent JSON parsed-index cache keyed by GTFS fingerprint, service date, exact service set and schema version.
+- Normal same-day restarts can restore the parsed timetable from disk instead of rescanning the regional `stop_times.txt`.
+- Optimised stop reconfiguration by pre-filtering raw `stop_times.txt` lines before CSV parsing while preserving exact stop matching and quoted CSV semantics.
+- Live validation reduced The Fairway reconfigure flow to about seven seconds.
+
+### Home Assistant quality and lifecycle hardening
+
+- Added Home Assistant-native tests using `pytest-homeassistant-custom-component` with a CI-enforced 95% coverage floor.
+- Added strict Home Assistant-style mypy validation.
+- Added HACS, Hassfest, version-sync and GTFS cache-policy CI gates.
+- Added translated entities/states/errors, icon translations, device classes and appropriate entity categories/default-disabled diagnostics.
+- Added clean unload cancellation/cache cleanup and persistent GTFS cache removal when the integration is deleted.
+- Bus stops are represented as logical Home Assistant service devices with stale-device cleanup.
+- Added a generic **Leave now notification** automation blueprint.
+- Quality-scale tracker marks all applicable Bronze, Silver, Gold and Platinum rules complete or explicitly exempt; as a custom integration this should be described as quality-scale aligned / Platinum-equivalent, not an official Home Assistant Core tier.
+
+### Validation
+
+- 151 Home Assistant-native tests.
+- 95.59% overall integration coverage on the beta.7 release candidate.
+- HACS validation passed.
+- Hassfest passed.
+- Runtime/manifest version-sync passed.
+- GTFS cache-policy validation passed.
+- Strict mypy passed.
+- Real Home Assistant testing covered The Fairway and Haymarket Bus Station, including natural location-driven HERE walking time, static fallback/recovery, terminus arrivals/departures, live/timetable coexistence, diagnostics redaction, transient live-feed fallback and recovery.
+
+## 0.6.0-beta.7 — 2026-09-12
+
+- Fixed a real BODS authentication edge case discovered during beta.6 validation: BODS can return HTTP 403 for an invalid API token rather than HTTP 401.
+- The shared live-feed client now keeps ordinary 403 responses as `access_forbidden`, but performs a minimal secondary BODS token probe when a vehicle-feed 403 is ambiguous.
+- If BODS explicitly reports `{"detail":"Invalid token."}`, the response is classified as `authentication_failed` so Home Assistant can start the normal reauthentication flow.
+- Plain 403 access/WAF responses remain distinct and do not trigger a misleading reauthentication prompt.
+- Initial/reauth API-key validation now uses a minimal dataset request and preserves the explicit invalid-token signal.
+- Added regression coverage for explicit invalid-token payloads, ambiguous vehicle-feed 403s confirmed by a secondary token probe, and config-flow invalid-auth mapping.
+
+
+## 0.6.0-beta.6 — 2026-09-11
+
+- Made the routed-walking safety ceiling configurable per bus stop instead of hard-coding 120 minutes.
+- Existing stops remain backward compatible and default to **120 minutes** until reconfigured.
+- Added **Maximum routed walking time** to add/reconfigure flows, allowing values from 1 to 1440 minutes.
+- Routed durations above the configured limit continue to use the static fallback exactly as before.
+- Exposed `walking_max_dynamic_minutes` on the Next bus attributes for transparent diagnostics.
+- Added regression coverage proving the default 120-minute ceiling is retained and that a higher configured limit can accept a longer provider duration.
+
+
+## 0.6.0-beta.5 — 2026-09-11
+
+- Fixed a release-blocking Home Assistant reconfigure-flow timeout found during beta.4 testing.
+- Optimised single-stop GTFS service discovery by pre-filtering raw `stop_times.txt` lines for the target stop before invoking the CSV parser.
+- Preserves exact CSV column matching and the full set of services available at the stop; this is a performance optimisation only and does not restrict reconfiguration choices.
+- Added regression coverage for exact stop matching, quoted stop IDs and false-positive target text in other GTFS columns.
+- Live Home Assistant validation confirmed The Fairway reconfiguration now opens in about 7 seconds instead of timing out.
+- Completed the routed-walking missing-source Repair test: a deleted configured source falls back to the static walking time, raises the translated Repair, and self-clears when routed walking is disabled/corrected.
+- Full v0.6 beta history and stable-release criteria are recorded in [`V0.6_VALIDATION.md`](V0.6_VALIDATION.md).
+
+
+## 0.6.0-beta.4 — 2026-09-11
+
+- Added a pure GTFS parsed-index cache-validation policy and automated regression tests.
+- Cache reuse is now explicitly tested to require an exact match for the GTFS file fingerprint, service date, configured service set and cache schema.
+- Added a dedicated CI job for GTFS cache invalidation policy tests.
+- Added a Home Assistant-native test harness using `pytest-homeassistant-custom-component`, covering parent configuration, reauthentication, stop subentries, reconfiguration, setup/unload/removal, Repairs, diagnostics, entities and live-feed resilience.
+- Added synthetic GTFS and SIRI-VM fixtures that exercise real ZIP/CSV/XML parsing, service calendars, stop/service discovery, trip indexing, live matching, delay projection and timetable-fallback health states without external network dependencies.
+- Added explicit tests for the shared BODS operator feed, including cache reuse, in-flight de-duplication, 401/403/429 classification, timeout/connection handling and unload cancellation.
+- Added entity-level tests for service-device grouping, translated entity keys, diagnostic defaults, device classes, delay availability semantics and diagnostics redaction.
+- Added an enforced CI coverage floor of 95 percent; the beta.4 release candidate measures 96 percent overall with configuration-flow coverage at 100 percent.
+- Added a Home Assistant-style strict mypy CI gate and resolved all strict-typing findings across the integration; all 15 runtime source files now pass.
+- Updated the repository quality-scale tracker so every applicable Bronze, Silver, Gold and Platinum rule is marked complete, with non-applicable rules explicitly documented as exempt.
+- These quality changes do not alter the live-to-GTFS ETA matching policy; they primarily add automated proof around the existing beta.3/beta.2 runtime behaviour.
+
+## 0.6.0-beta.3 — 2026-09-11
+
+- Reworked timetable preparation so all stops in the same BODS region share one parsed GTFS service index instead of independently scanning the regional `stop_times.txt` file.
+- Builds the shared index from the union of configured services for that region, then gives each stop a lightweight filtered view; ETA, matching and stop-view behaviour remain unchanged.
+- Added a persistent, non-pickle JSON parsed-index cache keyed to the exact GTFS file fingerprint, service date and configured service set. Normal same-day Home Assistant restarts can therefore restore parsed trips from disk instead of rescanning the regional GTFS archive.
+- Added GTFS index diagnostics including initial/last source (`rebuilt`, `disk` or `memory`), preparation time, shared service/trip counts and generation number.
+- The first beta.3 startup may still need one full regional parse to create the persistent cache; subsequent restarts with unchanged GTFS/date/services should be substantially faster.
+
+## 0.6.0-beta.2 — 2026-09-11
+
+- Added optional per-stop **routed dynamic walking time** using a Home Assistant travel-time sensor while retaining the configured static walking time as a safe fallback.
+- Kept routing provider-neutral: BODS Bus Tracker consumes an existing Home Assistant duration sensor rather than storing HERE/Google credentials or calling routing providers directly.
+- Added support for duration sensors reporting seconds, minutes or hours, with valid routed times rounded up to the next whole minute for passenger leave guidance.
+- Added safe fallback for missing, unavailable, stale, invalid or excessive routed travel-time values; existing static-only stops remain unchanged unless dynamic walking is explicitly enabled.
+- Kept `Leave by`, `Leave in` and `Leave now` tied to the next boardable departure and kept all dynamic-walking processing downstream of the BODS/GTFS ETA-matching engine.
+- Added dynamic-walking runtime attributes and diagnostics without copying person/device coordinates into BODS Bus Tracker state.
+- Added `DYNAMIC_WALKING.md` with provider-neutral setup guidance and HERE Travel Time / Google Maps Travel Time examples.
+- Declared the integration as `single_config_entry` so Home Assistant no longer offers a redundant second BODS account/hub while retaining the native **Add bus stop** subentry action.
+- Reworked BODS live-data acquisition around a shared account-level client: one operator-filtered SIRI-VM feed per unique operator is cached and reused by all configured stops, with route filtering performed locally.
+- Added a 15-second shared operator cache, concurrent-request de-duplication and a minimum six-second interval between real upstream BODS requests to stay safely beyond the published five-second consumer guidance.
+- Changed BODS HTTP error handling so only a genuine 401 triggers API-key reauthentication; 403 is reported as `access_forbidden` and 429 as `rate_limited` without incorrectly invalidating the configured key.
+- Made the native **Next bus delay** numeric sensor unavailable when no live delay estimate exists, preserving the distinction between **0 min delay** and **no live delay measurement** and avoiding non-numeric numeric-sensor states.
+
 ## 0.5.0 — 2026-08-27
 
 - Added an optional per-stop **Stop view** with **Departures**, **Arrivals**, and **Arrivals and departures** modes.

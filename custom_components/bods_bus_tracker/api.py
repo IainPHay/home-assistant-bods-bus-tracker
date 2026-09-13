@@ -15,7 +15,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Iterable
+from typing import IO, Iterable
 from zoneinfo import ZoneInfo
 
 from .const import LOCAL_TIME_ZONE, SERVICE_SEPARATOR
@@ -317,6 +317,45 @@ def search_stops(
     return tuple(item[2] for item in results[:limit])
 
 
+def _calling_trip_ids_for_stop(
+    file_handle: IO[bytes],
+    stop_id: str,
+    allowed_trip_ids: set[str],
+) -> set[str]:
+    """Return trips calling at one stop without CSV-parsing every GTFS row.
+
+    stop_times.txt is normally by far the largest file in a regional GTFS
+    archive. Reconfigure only needs rows for one stop, so cheaply reject raw
+    UTF-8 lines that cannot contain the target stop ID before invoking the CSV
+    parser. Candidate lines are still parsed normally, preserving CSV quoting
+    semantics and exact column matching.
+    """
+    header_raw = file_handle.readline()
+    if not header_raw:
+        return set()
+
+    header = next(csv.reader([header_raw.decode("utf-8-sig").rstrip("\r\n")]))
+    try:
+        trip_index = header.index("trip_id")
+        stop_index = header.index("stop_id")
+    except ValueError:
+        return set()
+
+    required_index = max(trip_index, stop_index)
+    stop_token = stop_id.encode("utf-8")
+    calling_trip_ids: set[str] = set()
+
+    for raw_line in file_handle:
+        if stop_token not in raw_line:
+            continue
+        row = next(csv.reader([raw_line.decode("utf-8").rstrip("\r\n")]))
+        if len(row) <= required_index:
+            continue
+        if row[stop_index] == stop_id and row[trip_index] in allowed_trip_ids:
+            calling_trip_ids.add(row[trip_index])
+
+    return calling_trip_ids
+
 def discover_stop_services(gtfs_path: Path, stop_id: str) -> StopDiscovery:
     """Find a stop and the operator/route pairs that call there."""
     with zipfile.ZipFile(gtfs_path) as zf:
@@ -355,11 +394,12 @@ def discover_stop_services(gtfs_path: Path, stop_id: str) -> StopDiscovery:
                         row.get("trip_headsign", "").strip(),
                     )
 
-        calling_trip_ids: set[str] = set()
         with zf.open("stop_times.txt") as file_handle:
-            for row in csv.DictReader(io.TextIOWrapper(file_handle, "utf-8-sig")):
-                if row.get("stop_id") == stop_id and row.get("trip_id") in trips:
-                    calling_trip_ids.add(row["trip_id"])
+            calling_trip_ids = _calling_trip_ids_for_stop(
+                file_handle,
+                stop_id,
+                set(trips),
+            )
 
     discovered: dict[tuple[str, str], dict[str, object]] = {}
     for trip_id in calling_trip_ids:
@@ -739,8 +779,8 @@ def calculate_candidates(
     service_date = now.astimezone(LOCAL_TZ).date()
 
     by_signature: dict[tuple[str, str, str, str, str, str], list[Trip]] = defaultdict(list)
-    for trip in trips:
-        by_signature[static_signature(trip)].append(trip)
+    for indexed_trip in trips:
+        by_signature[static_signature(indexed_trip)].append(indexed_trip)
 
     live_by_trip: dict[str, tuple[LiveVehicle, float, float, float]] = {}
     match_stats = {
@@ -758,38 +798,44 @@ def calculate_candidates(
             continue
 
         matches = by_signature.get(live_signature(vehicle), [])
-        trip: Trip | None = None
+        matched_trip: Trip | None = None
         if len(matches) == 1:
-            trip = matches[0]
+            matched_trip = matches[0]
             match_stats["matched_exact"] += 1
         elif len(matches) > 1:
             match_stats["ambiguous"] += 1
             continue
         else:
-            trip, kind = fuzzy_match_trip(vehicle, trips, service_date)
+            matched_trip, kind = fuzzy_match_trip(vehicle, trips, service_date)
             if kind == "fuzzy":
                 match_stats["matched_fuzzy"] += 1
             elif kind == "ambiguous":
                 match_stats["ambiguous"] += 1
             else:
                 match_stats["unmatched"] += 1
-            if trip is None:
+            if matched_trip is None:
                 continue
 
-        progress = estimate_delay_and_progress(vehicle, trip, service_date)
+        assert matched_trip is not None
+        progress = estimate_delay_and_progress(vehicle, matched_trip, service_date)
         if progress is None:
             continue
-        delay, route_progress, distance = progress
-        live_by_trip[trip.trip_id] = (vehicle, delay, route_progress, distance)
+        delay_estimate, route_progress, distance = progress
+        live_by_trip[matched_trip.trip_id] = (
+            vehicle,
+            delay_estimate,
+            route_progress,
+            distance,
+        )
 
     candidates: list[Candidate] = []
-    for trip in trips:
-        target = trip.target(target_stop)
+    for scheduled_trip in trips:
+        target = scheduled_trip.target(target_stop)
         if target is None:
             continue
-        target_index = trip.stops.index(target)
+        target_index = scheduled_trip.stops.index(target)
         target_is_origin = target_index == 0
-        target_is_destination = target_index == len(trip.stops) - 1
+        target_is_destination = target_index == len(scheduled_trip.stops) - 1
         stop_role = (
             "origin"
             if target_is_origin
@@ -811,7 +857,7 @@ def calculate_candidates(
         longitude: float | None = None
         distance_to_route: float | None = None
 
-        live = live_by_trip.get(trip.trip_id)
+        live = live_by_trip.get(scheduled_trip.trip_id)
         if live:
             vehicle, delay_est, route_progress, distance = live
             if route_progress < target_index + 0.05:
@@ -853,12 +899,12 @@ def calculate_candidates(
 
         candidates.append(
             Candidate(
-                service_key=make_service_key(trip.operator_noc, trip.route),
-                operator_noc=trip.operator_noc,
-                operator_name=trip.operator_name,
-                route=trip.route,
-                trip_id=trip.trip_id,
-                destination=trip.headsign or trip.destination.name,
+                service_key=make_service_key(scheduled_trip.operator_noc, scheduled_trip.route),
+                operator_noc=scheduled_trip.operator_noc,
+                operator_name=scheduled_trip.operator_name,
+                route=scheduled_trip.route,
+                trip_id=scheduled_trip.trip_id,
+                destination=scheduled_trip.headsign or scheduled_trip.destination.name,
                 scheduled=scheduled,
                 expected=expected,
                 realtime=realtime,

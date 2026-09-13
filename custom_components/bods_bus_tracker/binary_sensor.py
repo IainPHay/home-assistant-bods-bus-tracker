@@ -12,16 +12,18 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import BODSBusConfigEntry
-from .const import CONF_LEGACY_ENTITY_IDS, DOMAIN, SUBENTRY_TYPE_STOP, VERSION
+from .const import CONF_LEGACY_ENTITY_IDS, SUBENTRY_TYPE_STOP
 from .coordinator import BODSBusCoordinator
+from .entity import stop_device_info
+
+PARALLEL_UPDATES = 0
 
 
 class LeaveNowBinarySensor(CoordinatorEntity[BODSBusCoordinator], BinarySensorEntity):
     """Turn on when it is time to start walking to the selected stop."""
 
     _attr_has_entity_name = True
-    _attr_name = "Leave now"
-    _attr_icon = "mdi:walk"
+    _attr_translation_key = "leave_now"
 
     def __init__(
         self,
@@ -43,14 +45,8 @@ class LeaveNowBinarySensor(CoordinatorEntity[BODSBusCoordinator], BinarySensorEn
 
     @property
     def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_identifier)},
-            name=self._subentry.title,
-            manufacturer="UK Department for Transport",
-            model="BODS + GTFS bus ETA",
-            sw_version=VERSION,
-            configuration_url="https://data.bus-data.dft.gov.uk/",
-        )
+        """Return the monitored stop as a service device."""
+        return stop_device_info(self._subentry, self._device_identifier)
 
     @property
     def available(self) -> bool:

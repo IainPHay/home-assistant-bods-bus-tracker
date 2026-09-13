@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -10,6 +11,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 
 from .const import (
     CONF_API_KEY,
@@ -19,13 +21,17 @@ from .const import (
     CONF_SERVICES,
     CONF_STOP_ATCO,
     CONF_STOP_NAME,
+    CACHE_DIR,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
     PLATFORMS,
     SUBENTRY_TYPE_STOP,
+    WALKING_ISSUE_PREFIX,
 )
+from .api import ServiceSpec, parse_service_key
 from .coordinator import BODSBusCoordinator
-from .gtfs import GTFSDownloadError
+from .gtfs import GTFSDownloadError, SharedGTFSRegionIndex
+from .live_feed import BODSLiveFeedClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,9 +41,29 @@ class BODSBusRuntimeData:
     """Runtime data for a BODS Bus Tracker account."""
 
     coordinators: dict[str, BODSBusCoordinator]
+    live_feed: BODSLiveFeedClient
+    timetables: dict[str, SharedGTFSRegionIndex]
 
 
 type BODSBusConfigEntry = ConfigEntry[BODSBusRuntimeData]
+
+
+def _cleanup_orphan_walking_issues(
+    hass: HomeAssistant, entry: BODSBusConfigEntry
+) -> None:
+    """Delete routed-walking Repairs for stop subentries that no longer exist."""
+    valid_ids = {
+        f"{WALKING_ISSUE_PREFIX}{subentry.subentry_id}"
+        for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP)
+    }
+    registry = ir.async_get(hass)
+    for domain, issue_id in list(registry.issues):
+        if (
+            domain == DOMAIN
+            and issue_id.startswith(WALKING_ISSUE_PREFIX)
+            and issue_id not in valid_ids
+        ):
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
 
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
@@ -112,25 +138,92 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> bool:
     """Set up one BODS account and all configured stop subentries."""
+    _cleanup_orphan_walking_issues(hass, entry)
     coordinators: dict[str, BODSBusCoordinator] = {}
+    live_feed = BODSLiveFeedClient(hass, entry.data[CONF_API_KEY])
+
+    region_services: dict[str, dict[str, ServiceSpec]] = {}
+    for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
+        region = str(subentry.data[CONF_REGION])
+        services = region_services.setdefault(region, {})
+        for value in subentry.data[CONF_SERVICES]:
+            service = parse_service_key(value)
+            services[service.key] = service
+
+    timetables = {
+        region: SharedGTFSRegionIndex(hass, region, services.values())
+        for region, services in region_services.items()
+    }
 
     for subentry in entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
-        coordinator = BODSBusCoordinator(hass, entry, subentry)
+        coordinator = BODSBusCoordinator(
+            hass,
+            entry,
+            subentry,
+            live_feed,
+            timetables[str(subentry.data[CONF_REGION])],
+        )
         try:
             await coordinator.async_prepare()
         except GTFSDownloadError as exc:
             raise ConfigEntryNotReady(
-                f"Unable to prepare {subentry.title}: {exc}"
+                translation_domain=DOMAIN,
+                translation_key="gtfs_prepare_failed",
+                translation_placeholders={"stop": subentry.title},
             ) from exc
         await coordinator.async_config_entry_first_refresh()
         coordinators[subentry.subentry_id] = coordinator
 
-    entry.runtime_data = BODSBusRuntimeData(coordinators=coordinators)
+    entry.runtime_data = BODSBusRuntimeData(
+        coordinators=coordinators,
+        live_feed=live_feed,
+        timetables=timetables,
+    )
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> bool:
-    """Unload BODS Bus Tracker."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    """Unload BODS Bus Tracker and release account-level runtime state."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        await entry.runtime_data.live_feed.async_close()
+        entry.runtime_data.coordinators.clear()
+        entry.runtime_data.timetables.clear()
+    return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: BODSBusConfigEntry) -> None:
+    """Remove persistent BODS Bus Tracker data with the config entry."""
+    registry = ir.async_get(hass)
+    for domain, issue_id in list(registry.issues):
+        if domain == DOMAIN and issue_id.startswith(WALKING_ISSUE_PREFIX):
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
+
+    await hass.async_add_executor_job(
+        shutil.rmtree,
+        hass.config.path(CACHE_DIR),
+        True,
+    )
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: BODSBusConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Allow removal of bus-stop devices that no longer have a stop subentry."""
+    current_identifiers: set[str] = set()
+    for subentry in config_entry.get_subentries_of_type(SUBENTRY_TYPE_STOP):
+        if subentry.data.get(CONF_LEGACY_ENTITY_IDS):
+            current_identifiers.add(config_entry.entry_id)
+        else:
+            current_identifiers.add(
+                f"{config_entry.entry_id}:{subentry.subentry_id}"
+            )
+
+    return not any(
+        domain == DOMAIN and identifier in current_identifiers
+        for domain, identifier in device_entry.identifiers
+    )
