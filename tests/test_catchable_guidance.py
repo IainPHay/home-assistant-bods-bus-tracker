@@ -115,14 +115,21 @@ def test_live_delay_can_make_a_bus_catchable() -> None:
 
 def test_no_walking_time_disables_catchable_state() -> None:
     now = datetime(2026, 9, 13, 10, 0, tzinfo=TZ)
-    data = apply_catchable_guidance(
-        _snapshot(_row("X14", "2026-09-13T10:10:00+01:00")),
+    row = _row("X14", "2026-09-13T10:10:00+01:00")
+    snapshot = {
+        "departures": [row],
+        "_departures_for_guidance": [row],
+    }
+    result = apply_catchable_guidance(
+        snapshot,
         now,
         walking_minutes=0,
-    )["catchable"]
+    )
+    data = result["catchable"]
 
     assert data["status"] == "walking_disabled"
     assert data["departure"] is None
+    assert "_departures_for_guidance" not in result
 
 
 def test_empty_departures_are_reported() -> None:
