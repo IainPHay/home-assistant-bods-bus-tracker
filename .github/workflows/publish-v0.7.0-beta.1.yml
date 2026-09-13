@@ -23,29 +23,33 @@ jobs:
             exit 0
           fi
 
+          cat > /tmp/release-notes.md <<'EOF'
+          First v0.7 beta, based on stable v0.6.0.
+
+          ### Changes
+          - Exposes the monitored stop's public GTFS latitude/longitude in the existing Next bus stop attribute when available.
+          - Makes external walking-provider setup easier without exposing traveller/person coordinates.
+          - Keeps routed walking provider-neutral: BODS still consumes a Home Assistant duration sensor and does not store routing-provider credentials.
+          - Adds the v0.7 beta development/provider investigation record.
+
+          ### Provider investigation
+          HERE remains the live-validated reference provider. Google is viable but requires billing; Waze is not suitable for pedestrian routing. openrouteservice is promising, but the old HACS component is archived/unmaintained, so v0.7 will not recommend it unchanged.
+
+          ### Validation
+          - HACS: passed
+          - Hassfest: passed
+          - version sync: passed
+          - GTFS cache policy: passed
+          - strict mypy: passed
+          - 151 Home Assistant-native tests: passed
+          - coverage: 95.61%
+
+          This is a prerelease for targeted v0.7 testing. Stable v0.6.0 remains the recommended release for normal users.
+          EOF
+
           gh release create v0.7.0-beta.1 \
             --repo "${GITHUB_REPOSITORY}" \
             --target "7d945b345ba9ab572fff941bae1ac3774b9d21d4" \
             --prerelease \
             --title "BODS Bus Tracker v0.7.0-beta.1 — provider portability foundation" \
-            --notes "First v0.7 beta, based on stable v0.6.0.
-
-### Changes
-- Exposes the monitored stop's public GTFS latitude/longitude in the existing Next bus stop attribute when available.
-- Makes external walking-provider setup easier without exposing traveller/person coordinates.
-- Keeps routed walking provider-neutral: BODS still consumes a Home Assistant duration sensor and does not store routing-provider credentials.
-- Adds the v0.7 beta development/provider investigation record.
-
-### Provider investigation
-HERE remains the live-validated reference provider. Google is viable but requires billing; Waze is not suitable for pedestrian routing. openrouteservice is promising, but the old HACS component is archived/unmaintained, so v0.7 will not recommend it unchanged.
-
-### Validation
-- HACS: passed
-- Hassfest: passed
-- version sync: passed
-- GTFS cache policy: passed
-- strict mypy: passed
-- 151 Home Assistant-native tests: passed
-- coverage: 95.61%
-
-This is a prerelease for targeted v0.7 testing. Stable v0.6.0 remains the recommended release for normal users."
+            --notes-file /tmp/release-notes.md
