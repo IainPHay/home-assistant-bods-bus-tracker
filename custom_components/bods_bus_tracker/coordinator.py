@@ -22,8 +22,10 @@ from .api import (
     parse_service_key,
     parse_siri,
 )
+from .catchable import apply_catchable_guidance
 from .const import (
     CONF_API_KEY,
+    CONF_CATCHABLE_MARGIN,
     CONF_DYNAMIC_WALKING_TIME,
     CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
@@ -34,6 +36,7 @@ from .const import (
     CONF_STOP_VIEW,
     CONF_WALKING_TIME,
     CONF_WALKING_TIME_ENTITY,
+    DEFAULT_CATCHABLE_MARGIN,
     DEFAULT_DYNAMIC_WALKING_TIME,
     DEFAULT_MAX_DYNAMIC_WALKING_TIME,
     DEFAULT_POLL_INTERVAL,
@@ -93,6 +96,9 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 CONF_MAX_DYNAMIC_WALKING_TIME,
                 DEFAULT_MAX_DYNAMIC_WALKING_TIME,
             )
+        )
+        self.catchable_margin: int = int(
+            subentry.data.get(CONF_CATCHABLE_MARGIN, DEFAULT_CATCHABLE_MARGIN)
         )
         self.services: list[ServiceSpec] = [
             parse_service_key(value) for value in subentry.data[CONF_SERVICES]
@@ -410,6 +416,14 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Walking guidance is intentionally tied to a boardable departure. In arrivals
         # mode it is disabled; in both mode Next bus remains the next departure.
         if self.stop_view == STOP_VIEW_ARRIVALS:
+            snapshot["catchable"] = {
+                "status": "arrivals_only",
+                "walking_minutes": 0,
+                "margin_minutes": self.catchable_margin,
+                "required_lead_minutes": None,
+                "departure": None,
+                "following_departure": None,
+            }
             return snapshot
 
         (
@@ -419,7 +433,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             walking_fallback,
             source_status,
         ) = self._walking_guidance_values(now)
-        return apply_walking_guidance(
+        snapshot = apply_walking_guidance(
             snapshot,
             now,
             walking_minutes,
@@ -433,4 +447,10 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
             walking_fallback=walking_fallback,
             walking_source_status=source_status,
+        )
+        return apply_catchable_guidance(
+            snapshot,
+            now,
+            walking_minutes,
+            self.catchable_margin,
         )
