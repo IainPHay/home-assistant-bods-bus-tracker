@@ -416,6 +416,7 @@ class BODSBusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Walking guidance is intentionally tied to a boardable departure. In arrivals
         # mode it is disabled; in both mode Next bus remains the next departure.
         if self.stop_view == STOP_VIEW_ARRIVALS:
+            snapshot.pop("_departures_for_guidance", None)
             snapshot["catchable"] = {
                 "status": "arrivals_only",
                 "walking_minutes": 0,
