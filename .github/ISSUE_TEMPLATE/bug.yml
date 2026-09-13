@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a problem. **Do not include your BODS API key.**
+        Thanks for reporting a problem. **Do not include your BODS API key, routing-provider credentials, or unredacted precise personal-location data.** For structured v0.6 field testing, see TESTING.md first.
   - type: input
     id: ha_version
     attributes:
@@ -18,7 +18,7 @@ body:
     id: integration_version
     attributes:
       label: BODS Bus Tracker version
-      placeholder: 0.3.1
+      placeholder: 0.6.0
     validations:
       required: true
   - type: input
@@ -38,8 +38,30 @@ body:
   - type: input
     id: service
     attributes:
-      label: Route/operator
-      placeholder: X18 / Arriva North East
+      label: Route/operator and selected services
+      placeholder: Arriva North East / X14, X15, X16, X18
+  - type: dropdown
+    id: stop_view
+    attributes:
+      label: Stop view
+      options:
+        - Departures
+        - Arrivals
+        - Arrivals and departures
+        - Not sure
+  - type: dropdown
+    id: routed_walking
+    attributes:
+      label: Routed dynamic walking enabled?
+      options:
+        - "No"
+        - "Yes"
+  - type: input
+    id: routing_provider
+    attributes:
+      label: Routing provider / duration sensor type
+      description: Optional. Do not include API keys or precise person/device coordinates.
+      placeholder: HERE Travel Time / other duration sensor
   - type: textarea
     id: problem
     attributes:
@@ -51,5 +73,5 @@ body:
     id: logs
     attributes:
       label: Relevant logs or diagnostics
-      description: Remove credentials before posting. Home Assistant integration diagnostics are preferred where available.
+      description: Remove credentials and personal-location data before posting. Home Assistant integration diagnostics are preferred where available.
       render: text
