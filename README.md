@@ -132,6 +132,8 @@ After installation, continue with [Initial setup](#initial-setup).
 
 The integration uses one parent BODS account and one or more **Bus stop** subentries.
 
+**You do not need to know the bus stop code.** Select the timetable region and search by the stop name. An exact ATCO/NaPTAN stop code is only required if you want to use **Auto detect**.
+
 1. Add **BODS Bus Tracker** from **Settings → Devices & services**.
 2. Enter your BODS API key.
 3. Home Assistant opens the first **Add bus stop** flow.
