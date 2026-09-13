@@ -181,3 +181,25 @@ def test_summary_does_not_copy_vehicle_coordinates() -> None:
     assert "longitude" not in departure
     assert "trip_id" not in departure
     assert departure["vehicle"] == "1234"
+
+
+def test_private_full_departure_sequence_is_used_and_removed() -> None:
+    now = datetime(2026, 9, 13, 10, 0, tzinfo=TZ)
+    early_rows = [
+        _row(f"E{index}", f"2026-09-13T10:{index + 1:02d}:00+01:00")
+        for index in range(12)
+    ]
+    catchable = _row("LATE", "2026-09-13T10:20:00+01:00")
+    snapshot = {
+        "departures": early_rows,
+        "_departures_for_guidance": [*early_rows, catchable],
+    }
+
+    result = apply_catchable_guidance(
+        snapshot,
+        now,
+        walking_minutes=15,
+    )
+
+    assert result["catchable"]["departure"]["route"] == "LATE"
+    assert "_departures_for_guidance" not in result
