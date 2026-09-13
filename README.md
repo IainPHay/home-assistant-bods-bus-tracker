@@ -30,6 +30,8 @@ Key v0.6 changes:
 
 If you are helping test v0.6 on another operator or BODS region, see [`TESTING.md`](TESTING.md).
 
+For step-by-step setup guides, worked examples and extended troubleshooting, see the [BODS Bus Tracker Wiki](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki).
+
 ## Screenshots
 
 ### Multiple stops under one BODS account
@@ -146,6 +148,8 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
 11. Optionally adjust **Maximum routed walking time**; the default is **120 minutes** and longer provider durations fall back to the static walking time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
 12. Choose the live polling interval. **30 seconds** is recommended.
 
+For a detailed HERE walkthrough, see [Setting up routed walking with HERE Travel Time](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Setting-up-HERE-Travel-Time). For provider-neutral compatibility guidance, see [Routed walking providers](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Routed-walking-providers).
+
 ### Supported regional timetable feeds
 
 - East Anglia
@@ -204,6 +208,8 @@ A ready-to-import Home Assistant automation blueprint is included for the most c
 
 The blueprint is intentionally generic: it can call a mobile notification, Alexa announcement, script or other Home Assistant action without hard-coding a notification service.
 
+More worked automation examples are collected in the [Automation recipes Wiki page](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Automation-recipes).
+
 For the complete v0.6 development and validation history, see [`V0.6_VALIDATION.md`](V0.6_VALIDATION.md).
 
 ## Stop views
@@ -230,7 +236,7 @@ The integration deliberately does **not** assume that an incoming vehicle will f
 
 For arrival context, `previous_stop` is derived from the ordered GTFS stop list. This avoids relying on ambiguous generic journey origins such as `Bus Station` and can instead show a familiar local stop such as **Haymarket Barras Bridge**.
 
-See [`TERMINUS_CARD.md`](TERMINUS_CARD.md) for more detail.
+See [`TERMINUS_CARD.md`](TERMINUS_CARD.md) for more detail, or the [Terminus setup Wiki page](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Terminus-setup) for the extended walkthrough.
 
 ## Entities
 
@@ -412,6 +418,8 @@ This can be normal. A journey may not appear in the live feed until shortly befo
 Some operators publish incomplete SIRI records. Records missing key aimed-time fields are currently skipped rather than guessed.
 
 Check the **Live vehicles**, **GTFS matches**, and **Data status** diagnostic entities. Home Assistant's downloadable integration diagnostics can also help when opening an issue.
+
+For a fuller recovery/authentication checklist, see [Troubleshooting live data](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Troubleshooting-live-data).
 
 ### The stop is not found
 
