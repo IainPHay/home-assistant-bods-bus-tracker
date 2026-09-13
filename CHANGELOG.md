@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0-beta.4 — in development
+
+### Zone-exit catchable-bus notifications
+
+- Added a reusable Home Assistant automation blueprint that triggers when a selected `person` leaves a selected `zone`.
+- The blueprint consumes the native **Catchable bus** sensor as the trusted source of truth and does not recalculate catchability, ETA, routed/static walking, or the safety margin in YAML.
+- Added one required primary notification/announcement action and an optional second action.
+- Exposes a ready-to-send `bods_message` plus structured `bods_*` variables for custom Companion App, notify-entity, Alexa, script, or other Home Assistant actions.
+- Notification content preserves route, destination, expected/scheduled departure time, live/timetable state, timing/delay detail, effective walking time, explicit safety margin, required lead time, and the following departure.
+- Non-trusted Catchable bus states do not produce a notification.
+- Added dedicated setup/documentation, a concrete automation example, and regression-policy tests that guard against recreating catchability from raw departure lists or local time arithmetic.
+
 ## 0.7.0-beta.3 — 2026-09-13
 
 ### Diagnostics/privacy hardening
