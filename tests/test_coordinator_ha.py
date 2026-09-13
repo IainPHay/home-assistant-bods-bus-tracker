@@ -17,6 +17,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.bods_bus_tracker.api import ServiceSpec, StopTime, Trip
 from custom_components.bods_bus_tracker.const import (
     CONF_API_KEY,
+    CONF_CATCHABLE_MARGIN,
     CONF_DYNAMIC_WALKING_TIME,
     CONF_MAX_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
@@ -46,6 +47,7 @@ def _entry(
     dynamic: bool = False,
     walking_entity: str = "",
     max_dynamic: int = 120,
+    catchable_margin: int = 0,
 ):
     return MockConfigEntry(
         domain=DOMAIN,
@@ -64,6 +66,7 @@ def _entry(
                     CONF_DYNAMIC_WALKING_TIME: dynamic,
                     CONF_WALKING_TIME_ENTITY: walking_entity,
                     CONF_MAX_DYNAMIC_WALKING_TIME: max_dynamic,
+                    CONF_CATCHABLE_MARGIN: catchable_margin,
                     CONF_POLL_INTERVAL: 30,
                 },
                 subentry_id="stop",
@@ -100,6 +103,7 @@ def _coordinator(
     dynamic: bool = False,
     walking_entity: str = "",
     max_dynamic: int = 120,
+    catchable_margin: int = 0,
 ):
     entry = _entry(
         services=services,
@@ -108,6 +112,7 @@ def _coordinator(
         dynamic=dynamic,
         walking_entity=walking_entity,
         max_dynamic=max_dynamic,
+        catchable_margin=catchable_margin,
     )
     entry.add_to_hass(hass)
     subentry = next(iter(entry.subentries.values()))
@@ -383,3 +388,4 @@ async def test_arrivals_mode_skips_walking_guidance(hass) -> None:
     snapshot = await coordinator._async_update_data()
 
     assert "walking_mode" not in snapshot["next_bus"]
+    assert snapshot["catchable"]["status"] == "arrivals_only"
