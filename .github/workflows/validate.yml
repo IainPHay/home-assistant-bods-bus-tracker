@@ -15,6 +15,12 @@ on:
 
 permissions: {}
 
+# Only the newest validation for the same PR/ref is useful. Cancelling superseded
+# runs keeps Actions history readable and frees runners for the current commit.
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate-hacs:
     runs-on: ubuntu-latest
