@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 DOMAIN = "bods_bus_tracker"
-VERSION = "0.6.0-beta.7"
+VERSION = "0.6.0"
 PLATFORMS = ["sensor", "binary_sensor"]
 SUBENTRY_TYPE_STOP = "stop"
 
