@@ -1,7 +1,13 @@
 name: Validate
 
 on:
+  # Feature branches are validated through their pull requests, avoiding a
+  # duplicate push + pull_request run for every development commit.
   push:
+    branches:
+      - main
+    tags:
+      - "v*"
   pull_request:
   schedule:
     - cron: "0 0 * * *"
