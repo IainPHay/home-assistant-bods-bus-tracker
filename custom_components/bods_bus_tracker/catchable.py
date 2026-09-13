@@ -77,7 +77,9 @@ def apply_catchable_guidance(
         snapshot["catchable"] = result
         return snapshot
 
-    departures = snapshot.get("departures")
+    departures = snapshot.pop("_departures_for_guidance", None)
+    if not isinstance(departures, list):
+        departures = snapshot.get("departures")
     if not isinstance(departures, list) or not departures:
         result["status"] = "no_departures"
         snapshot["catchable"] = result
