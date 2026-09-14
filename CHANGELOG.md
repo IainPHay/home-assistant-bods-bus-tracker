@@ -19,8 +19,9 @@
 - Added targeted edge-path regression tests for authentication probing, shared live-feed caching/rate spacing, catchability, GTFS cache validation, stop search ranking, SIRI warning paths and conservative live/GTFS matching guards.
 - `config_flow.py` now measures **100%** line coverage.
 - Every integration Python module now measures **greater than 95%** line coverage.
-- Overall integration coverage is **99.08%** with **182 tests passing**.
-- CI now enforces three separate coverage protections: at least 97% overall, exactly 100% for `config_flow.py`, and greater than 95% for every integration module.
+- Overall integration line coverage is now **100.00%** with **191 tests passing**.
+- The final defensive paths covered include legacy-device migration, translated GTFS update failure, successful SIRI warning collection, malformed GTFS trip handling, stale realtime candidates, temporary-file cleanup failures and the hourly unchanged-fingerprint cache path.
+- CI now enforces **100% overall line coverage**, **100% for `config_flow.py`**, and **100% for every integration Python module**.
 - Added `QUALITY_SCALE.md` as a durable Bronze/Silver/Gold/Platinum rule-by-rule evidence map.
 
 ## 0.7.0-beta.3 — 2026-09-13

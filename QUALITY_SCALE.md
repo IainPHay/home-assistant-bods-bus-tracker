@@ -8,10 +8,10 @@ It is a **project self-audit**, not an official Home Assistant quality-tier awar
 
 Current `feature/v0.7` validation:
 
-- **182 tests passed**;
-- **99.08% overall integration line coverage**;
+- **191 tests passed**;
+- **100.00% overall integration line coverage**;
 - **100% `config_flow.py` coverage**;
-- every integration Python module is **above 95%** line coverage;
+- every integration Python module is at **100%** line coverage;
 - HACS validation passes;
 - hassfest validation passes;
 - strict mypy validation passes for all integration source files;
@@ -21,9 +21,9 @@ Current `feature/v0.7` validation:
 CI deliberately enforces the two coverage requirements separately:
 
 1. `config_flow.py` must remain at **100%**;
-2. every integration Python module must remain **above 95%**.
+2. every integration Python module must remain at **100%**.
 
-The overall project gate is additionally set to **97%** to prevent broad regression.
+The overall project gate is also set to **100%**, so uncovered production lines cannot be introduced silently.
 
 ## Bronze
 
@@ -63,7 +63,7 @@ The overall project gate is additionally set to **97%** to prevent broad regress
 | log-when-unavailable | Done | Coordinator logs degraded/scheduled-only live-feed state and recovery without log spam on unchanged state. |
 | parallel-updates | Done | Entity platforms declare `PARALLEL_UPDATES = 0`; shared coordinator/live-feed logic controls upstream concurrency. |
 | reauthentication-flow | Done | Confirmed invalid credentials raise `ConfigEntryAuthFailed`; reauth updates the shared key without deleting stops. |
-| test-coverage | Done | Current overall coverage is 99.08%; every integration Python module is above 95%, enforced in CI. |
+| test-coverage | Done | Current overall coverage is 100.00%; every integration Python module is at 100%, enforced in CI. |
 
 ## Gold
 
@@ -128,4 +128,4 @@ The remaining distinction is process/evidence rather than a known runtime featur
 - continue widening real-world operator/region validation;
 - if moving from HACS/custom to Home Assistant Core, satisfy the then-current Core repository, ownership and branding submission requirements and undergo Home Assistant review.
 
-The quality target is therefore **no silent regression**, not artificially forcing 100% overall code coverage with low-value tests.
+The quality target remains **no silent regression**. The remaining defensive paths were covered with behaviour-preserving tests rather than production-code contortions, so 100% line coverage is now both achieved and enforced.

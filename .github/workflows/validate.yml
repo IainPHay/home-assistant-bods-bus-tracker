@@ -93,7 +93,7 @@ jobs:
           --cov-report=term-missing
           --cov-report=xml
           --cov-report=json:coverage.json
-          --cov-fail-under=97
+          --cov-fail-under=100
 
       - name: Enforce Integration Quality Scale coverage gates
         shell: bash
@@ -117,23 +117,22 @@ jobs:
                   f"(missing {config_flow['missing_lines']} lines)"
               )
 
-          below = []
+          incomplete = []
           for path, summary in sorted(modules.items()):
-              statements = summary["num_statements"]
-              covered = summary["covered_lines"]
-              ratio = covered / statements if statements else 1.0
-              if ratio <= 0.95:
-                  below.append(f"{path}: {ratio * 100:.2f}%")
+              if summary["missing_lines"] != 0:
+                  incomplete.append(
+                      f"{path}: missing {summary['missing_lines']} lines"
+                  )
 
-          if below:
+          if incomplete:
               raise SystemExit(
-                  "Quality Scale failure: every integration module must be above 95% "
-                  "line coverage:\n" + "\n".join(below)
+                  "Coverage failure: every integration module must remain at 100% "
+                  "line coverage:\n" + "\n".join(incomplete)
               )
 
           total = report["totals"]["percent_covered"]
-          print(f"Config flow coverage: 100.00%")
-          print(f"Every integration module: >95%")
+          print("Config flow coverage: 100.00%")
+          print("Every integration module: 100.00%")
           print(f"Overall integration coverage: {total:.2f}%")
           PY
 
