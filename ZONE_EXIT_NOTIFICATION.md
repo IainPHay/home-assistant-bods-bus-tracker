@@ -92,6 +92,8 @@ For installations that expose the phone-specific Companion App action:
 
 The same pattern can be used for the optional second action, or the second action can call a script/announcement instead.
 
+When using Home Assistant's visual action editor, put `{{ bods_message }}` in the dedicated **message** field and `{{ bods_title }}` in **title**. Do not put the message string into the generic **data** mapping field.
+
 ## Concrete automation example
 
 After importing the blueprint, an automation can look like:
@@ -158,6 +160,24 @@ The blueprint never changes BODS ETA/matching or walking decisions.
 The blueprint reads only the Catchable bus sensor and the selected Home Assistant zone/person trigger.
 
 It does not copy person/device coordinates into BODS, does not access routing-provider credentials, and does not use the private full departure scratch list. The catchable and following-departure mappings are the same privacy-safe summaries exposed by the integration.
+
+## Current beta validation status
+
+The blueprint has now passed a controlled real Home Assistant execution test:
+
+- Catchable bus reported `status: ok`;
+- the selected and following departures were read correctly;
+- walking, margin and required-lead values were preserved;
+- timetable fallback rendered correctly;
+- the Companion App notify service was called successfully;
+- notification whitespace/punctuation was cleaned up and re-tested successfully.
+
+The controlled test used **Run actions**, so Home Assistant correctly recorded no real trigger. It proves the action/message path, not the physical zone transition.
+
+Remaining live gate before beta.4 publication:
+
+- a genuine person exit from the configured origin zone;
+- confirmation that the notification is received on the target phone.
 
 ## Beta validation checklist
 

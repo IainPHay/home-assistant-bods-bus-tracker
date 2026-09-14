@@ -1,6 +1,6 @@
 # Routed dynamic walking time
 
-BODS Bus Tracker 0.6 adds an optional provider-neutral routed walking-time source for each monitored stop.
+BODS Bus Tracker v0.6 introduced an optional provider-neutral routed walking-time source for each monitored stop. v0.7 keeps that provider boundary unchanged and also uses the resolved walking time as an input to native **Catchable bus** guidance.
 
 The integration does **not** call HERE, Google, or another routing provider itself. Instead, configure a Home Assistant duration/travel-time sensor separately and select that entity when adding or reconfiguring the bus stop. BODS Bus Tracker only reads the selected entity's current duration value.
 
@@ -12,7 +12,7 @@ Each stop retains the existing **Static walking time to stop** setting. When **U
 
 A valid routed value overrides the static time. If the dynamic sensor is missing, `unknown`, `unavailable`, stale, non-numeric, negative, has an unsupported unit, or exceeds the configured **Maximum routed walking time**, the integration automatically falls back to the configured static walking time. The maximum defaults to **120 minutes** and can be changed independently for each stop. If the static fallback is `0`, Leave by / Leave in / Leave now guidance is disabled until the dynamic sensor becomes valid again.
 
-Dynamic walking affects only walking guidance. It never changes BODS/GTFS matching, the predicted bus time, the selected next bus, or terminus arrival/departure logic.
+Dynamic walking remains downstream of BODS/GTFS matching. It never changes live matching, the predicted bus time, the selected next bus, or terminus arrival/departure logic. In v0.7 the already-resolved effective walking time can also feed Catchable bus state; catchability still does not alter ETA/matching.
 
 ## Maximum routed walking time
 
@@ -24,6 +24,22 @@ The limit is deliberately separate from the static fallback:
 - the **Maximum routed walking time** determines whether a valid provider duration is plausible enough to use.
 
 For example, a stop configured with a 480-minute maximum can accept a HERE result of 407 minutes, while another stop can retain the conservative 120-minute default.
+
+## Stop-specific routing for moving travellers
+
+For a moving `person` or `device_tracker`, the selected duration entity should represent:
+
+```text
+current traveller location → this exact monitored boarding stop
+```
+
+If several BODS stops are configured, the safest architecture is normally **one routed duration sensor per stop**, each with the appropriate fixed destination.
+
+A single shared routing sensor can report a perfectly valid duration to the wrong stop. BODS only sees the duration value and cannot infer the provider's destination from that number.
+
+The **Maximum routed walking time** can reject an extreme value and fall back to static walking, but it is not destination validation. A plausible-but-wrong duration could still be accepted.
+
+This matters even more in v0.7 because the effective walking time contributes directly to Catchable bus selection.
 
 ## Provider-neutral sensor contract
 
@@ -42,15 +58,15 @@ BODS Bus Tracker does not require a specific entity ID, integration platform, pr
 
 The source is considered stale if Home Assistant has not reported it for 30 minutes. This is deliberately much longer than typical travel-time polling so an unchanged but regularly reported route remains valid.
 
-### Provider compatibility in v0.6
+### Provider compatibility
 
-| Provider/source | v0.6 status | What BODS Bus Tracker requires |
+| Provider/source | Project status | What BODS Bus Tracker requires |
 | --- | --- | --- |
-| **HERE Travel Time** | **Live-validated** | Select the HERE duration sensor. A dynamic Home Assistant `person` origin and pedestrian route were used during v0.6 validation. |
-| **Google Maps Travel Time** | Compatible in principle; not live-validated by this project for v0.6 | The Home Assistant integration must expose a walking/travel duration sensor using a supported unit. |
+| **HERE Travel Time** | **Live-validated** | Select the HERE duration sensor for the same stop. A dynamic Home Assistant `person` origin and pedestrian route have been exercised end-to-end. |
+| **Google Maps Travel Time** | Compatible in principle; not the primary project validation path | The Home Assistant integration must expose a walking/travel duration sensor using a supported unit. |
 | **Another Home Assistant duration sensor** | Provider-neutral compatibility | It can be used if it follows the numeric duration/unit/staleness rules above. |
 
-The planned v0.7 work will broaden the documented/tested provider matrix without changing this provider-neutral runtime contract.
+v0.7 broadens the guidance around provider portability without changing this provider-neutral runtime contract. Alternative providers should remain separate Home Assistant routing layers rather than adding routing credentials or provider-specific API calls to BODS.
 
 ## HERE Travel Time example — live-validated in v0.6
 

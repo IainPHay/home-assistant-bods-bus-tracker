@@ -11,6 +11,8 @@
 - Notification content preserves route, destination, expected/scheduled departure time, live/timetable state, timing/delay detail, effective walking time, explicit safety margin, required lead time, and the following departure.
 - Non-trusted Catchable bus states do not produce a notification.
 - Added dedicated setup/documentation, a concrete automation example, and regression-policy tests that guard against recreating catchability from raw departure lists or local time arithmetic.
+- Controlled real Home Assistant execution validated Catchable bus → blueprint variables → Companion App notify service using timetable fallback; message formatting was then cleaned up and re-tested successfully.
+- Genuine physical zone-exit triggering and confirmation of receipt on the target phone remain the final live gate before beta.4 publication.
 
 ## 0.7.0-beta.3 — 2026-09-13
 
