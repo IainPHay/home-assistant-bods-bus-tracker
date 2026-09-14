@@ -8,8 +8,8 @@ It is a **project self-audit**, not an official Home Assistant quality-tier awar
 
 Current `feature/v0.7` validation:
 
-- **174 tests passed**;
-- **97.50% overall integration line coverage**;
+- **182 tests passed**;
+- **99.08% overall integration line coverage**;
 - **100% `config_flow.py` coverage**;
 - every integration Python module is **above 95%** line coverage;
 - HACS validation passes;
@@ -63,7 +63,7 @@ The overall project gate is additionally set to **97%** to prevent broad regress
 | log-when-unavailable | Done | Coordinator logs degraded/scheduled-only live-feed state and recovery without log spam on unchanged state. |
 | parallel-updates | Done | Entity platforms declare `PARALLEL_UPDATES = 0`; shared coordinator/live-feed logic controls upstream concurrency. |
 | reauthentication-flow | Done | Confirmed invalid credentials raise `ConfigEntryAuthFailed`; reauth updates the shared key without deleting stops. |
-| test-coverage | Done | Current overall coverage is 97.50%; every integration Python module is above 95%, enforced in CI. |
+| test-coverage | Done | Current overall coverage is 99.08%; every integration Python module is above 95%, enforced in CI. |
 
 ## Gold
 

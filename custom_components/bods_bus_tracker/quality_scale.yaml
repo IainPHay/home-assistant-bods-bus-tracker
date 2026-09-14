@@ -51,7 +51,7 @@ rules:
   reauthentication-flow: done
   test-coverage:
     status: done
-    comment: The Home Assistant-native suite currently measures 97.50 percent; CI requires at least 97 percent overall and greater than 95 percent for every integration Python module.
+    comment: The Home Assistant-native suite currently measures 99.08 percent; CI requires at least 97 percent overall, 100 percent for config_flow.py, and greater than 95 percent for every integration Python module.
 
   # Gold
   devices: done

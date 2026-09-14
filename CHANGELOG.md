@@ -14,6 +14,15 @@
 - Controlled real Home Assistant execution validated Catchable bus → blueprint variables → Companion App notify service using timetable fallback; message formatting was then cleaned up and re-tested successfully.
 - Genuine physical zone-exit triggering and confirmation of receipt on the target phone remain the final live gate before beta.4 publication.
 
+### Integration Quality Scale hardening
+
+- Added targeted edge-path regression tests for authentication probing, shared live-feed caching/rate spacing, catchability, GTFS cache validation, stop search ranking, SIRI warning paths and conservative live/GTFS matching guards.
+- `config_flow.py` now measures **100%** line coverage.
+- Every integration Python module now measures **greater than 95%** line coverage.
+- Overall integration coverage is **99.08%** with **182 tests passing**.
+- CI now enforces three separate coverage protections: at least 97% overall, exactly 100% for `config_flow.py`, and greater than 95% for every integration module.
+- Added `QUALITY_SCALE.md` as a durable Bronze/Silver/Gold/Platinum rule-by-rule evidence map.
+
 ## 0.7.0-beta.3 — 2026-09-13
 
 ### Diagnostics/privacy hardening
