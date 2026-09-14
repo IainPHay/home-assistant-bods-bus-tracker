@@ -392,7 +392,7 @@ async def test_shared_gtfs_rechecks_unchanged_fingerprint_after_hour(
         ),
     ):
         first, _ = await index.async_get(DAY)
-        index._last_check_monotonic = 0.0
+        index._last_check_monotonic = -10_000_000.0
         second, metadata = await index.async_get(DAY)
 
     assert second is first
