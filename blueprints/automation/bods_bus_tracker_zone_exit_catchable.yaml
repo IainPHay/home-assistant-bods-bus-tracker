@@ -102,8 +102,11 @@ conditions:
         catchable_status == 'ok'
         and states(catchable_entity) not in ['unknown', 'unavailable', 'none', '']
         and departure is mapping
-        and departure.get('route')
-        and (departure.get('expected') or departure.get('scheduled'))
+        and (departure.get('route', '') | string | trim | length > 0)
+        and (
+          (departure.get('expected', '') | string | trim | length > 0)
+          or (departure.get('scheduled', '') | string | trim | length > 0)
+        )
       }}
 
 actions:

@@ -174,6 +174,8 @@ The blueprint has now passed a controlled real Home Assistant execution test:
 
 The controlled test used **Run actions**, so Home Assistant correctly recorded no real trigger. It proves the action/message path, not the physical zone transition.
 
+A subsequent genuine physical zone exit on 2026-09-14 confirmed that the Home Assistant `zone` / `leave` trigger itself works. That real trace also exposed a blueprint condition bug: when Catchable bus was valid, the final bare departure timestamp expression could make the template render the timestamp string rather than an explicit boolean true, so Home Assistant stopped before the notification action. The condition now uses explicit boolean route/time checks, with regression coverage for valid and invalid catchable states.
+
 Remaining live gate before beta.4 publication:
 
 - a genuine person exit from the configured origin zone;

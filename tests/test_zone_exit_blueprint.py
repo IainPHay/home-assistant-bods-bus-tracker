@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from jinja2 import Environment, StrictUndefined
 
 BLUEPRINT_PATH = Path(
     "blueprints/automation/bods_bus_tracker_zone_exit_catchable.yaml"
@@ -39,6 +40,53 @@ def _section_inputs(blueprint: dict[str, Any]) -> dict[str, Any]:
         if isinstance(value, dict) and isinstance(value.get("input"), dict):
             result.update(value["input"])
     return result
+
+
+def _render_condition(
+    condition: str,
+    *,
+    catchable_status: str | None,
+    departure: dict[str, Any],
+    sensor_state: str,
+) -> str:
+    """Render the blueprint condition with representative Home Assistant state."""
+    environment = Environment(undefined=StrictUndefined, autoescape=False)
+    environment.globals["states"] = lambda _entity_id: sensor_state
+    return environment.from_string(condition).render(
+        catchable_status=catchable_status,
+        catchable_entity="sensor.test_catchable",
+        departure=departure,
+    ).strip()
+
+
+def test_zone_exit_condition_renders_explicit_boolean() -> None:
+    """A valid catchable departure must render boolean true, never a timestamp."""
+    data = _load_blueprint()
+    condition = data["conditions"][0]["value_template"]
+    departure = {
+        "route": "X18",
+        "expected": "2026-09-14T17:18:00+01:00",
+        "scheduled": "2026-09-14T17:18:00+01:00",
+    }
+
+    assert _render_condition(
+        condition,
+        catchable_status="ok",
+        departure=departure,
+        sensor_state="X18",
+    ) == "True"
+    assert _render_condition(
+        condition,
+        catchable_status="no_departures",
+        departure=departure,
+        sensor_state="X18",
+    ) == "False"
+    assert _render_condition(
+        condition,
+        catchable_status="ok",
+        departure={},
+        sensor_state="unknown",
+    ) == "False"
 
 
 def test_zone_exit_blueprint_uses_trusted_catchable_state() -> None:

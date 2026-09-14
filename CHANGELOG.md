@@ -12,7 +12,9 @@
 - Non-trusted Catchable bus states do not produce a notification.
 - Added dedicated setup/documentation, a concrete automation example, and regression-policy tests that guard against recreating catchability from raw departure lists or local time arithmetic.
 - Controlled real Home Assistant execution validated Catchable bus → blueprint variables → Companion App notify service using timetable fallback; message formatting was then cleaned up and re-tested successfully.
-- Genuine physical zone-exit triggering and confirmation of receipt on the target phone remain the final live gate before beta.4 publication.
+- A genuine physical zone exit proved the Home Assistant zone trigger works, but exposed a blueprint condition bug: with otherwise valid Catchable bus data, the template could finish by returning the departure timestamp string instead of an explicit boolean true, so Home Assistant stopped at the condition before the notification action.
+- Fixed the condition so valid route/departure checks always render a boolean result, and added regression coverage using representative catchable-departure data.
+- End-to-end confirmation of notification receipt on the target phone remains the final live gate before beta.4 publication after re-importing the corrected blueprint.
 
 ### Integration Quality Scale hardening
 
