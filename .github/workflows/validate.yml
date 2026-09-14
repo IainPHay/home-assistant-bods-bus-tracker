@@ -92,7 +92,50 @@ jobs:
           --cov=custom_components.bods_bus_tracker
           --cov-report=term-missing
           --cov-report=xml
-          --cov-fail-under=95
+          --cov-report=json:coverage.json
+          --cov-fail-under=97
+
+      - name: Enforce Integration Quality Scale coverage gates
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("coverage.json").read_text(encoding="utf-8"))
+          prefix = "custom_components/bods_bus_tracker/"
+          modules = {
+              path: data["summary"]
+              for path, data in report["files"].items()
+              if path.startswith(prefix) and path.endswith(".py")
+          }
+
+          config_flow = modules[f"{prefix}config_flow.py"]
+          if config_flow["missing_lines"] != 0:
+              raise SystemExit(
+                  "Quality Scale failure: config_flow.py must have 100% line coverage "
+                  f"(missing {config_flow['missing_lines']} lines)"
+              )
+
+          below = []
+          for path, summary in sorted(modules.items()):
+              statements = summary["num_statements"]
+              covered = summary["covered_lines"]
+              ratio = covered / statements if statements else 1.0
+              if ratio <= 0.95:
+                  below.append(f"{path}: {ratio * 100:.2f}%")
+
+          if below:
+              raise SystemExit(
+                  "Quality Scale failure: every integration module must be above 95% "
+                  "line coverage:\n" + "\n".join(below)
+              )
+
+          total = report["totals"]["percent_covered"]
+          print(f"Config flow coverage: 100.00%")
+          print(f"Every integration module: >95%")
+          print(f"Overall integration coverage: {total:.2f}%")
+          PY
 
 
   validate-strict-typing:

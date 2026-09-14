@@ -32,6 +32,8 @@ If you are helping test v0.6 on another operator or BODS region, see [`TESTING.m
 
 For step-by-step setup guides, worked examples and extended troubleshooting, see the [BODS Bus Tracker Wiki](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki).
 
+For the current Home Assistant Integration Quality Scale self-audit and rule-by-rule evidence, see [`QUALITY_SCALE.md`](QUALITY_SCALE.md).
+
 ## Screenshots
 
 ### Multiple stops under one BODS account
@@ -452,7 +454,7 @@ Ordinary HTTP 403 access failures are kept distinct from invalid credentials. If
 
 ## Roadmap
 
-The next development cycle is tracked in [issue #8](https://github.com/IainPHay/home-assistant-bods-bus-tracker/issues/8). Planned v0.7 work starts with broader routed-walking provider portability/documentation, followed by higher-level catchable-bus and journey-state automation ideas.
+v0.7 development is tracked in [issue #8](https://github.com/IainPHay/home-assistant-bods-bus-tracker/issues/8). Provider-neutral routed walking, native Catchable bus state and the zone-exit notification blueprint are now implemented in the beta branch; the next major functional stage is conservative boarding inference followed by expected-arrival notifications only after that state is proven reliable.
 
 Other longer-term possibilities include broader matching when SIRI aimed-time fields are incomplete, locality/postcode stop search, historical route-segment learning and wider operator/region regression testing.
 
