@@ -56,7 +56,81 @@ Current evidence contract:
 
 No raw latitude/longitude, person entity ID, device-tracker entity ID or routing-provider credential is accepted or emitted by the model.
 
-A future Home Assistant adapter may calculate these booleans from private local state, but the inference result and diagnostics remain derived.
+The read-only evidence adapter now calculates the traveller-side booleans from transient Home Assistant location fixes while keeping the inference result and retained memory coordinate-free. Trusted bus/route signals remain inputs from the existing BODS matching/timing layer rather than being recalculated.
+
+## Read-only evidence adapter
+
+Two new modules keep location handling separate from inference policy:
+
+- `journey_evidence_ha.py` reads a Home Assistant `State` and creates one transient `LocationFix`;
+- `journey_evidence.py` converts the current/previous transient fixes plus trusted BODS journey signals into `BoardingEvidence`.
+
+The adapter does not subscribe to entities yet, write entities, notify users, call the network or add raw coordinates to diagnostics.
+
+### Coordinate-retention rule
+
+Raw latitude/longitude may exist only inside the current adapter call and the transient old/new Home Assistant states already supplied by Home Assistant.
+
+Persisted adapter memory contains only:
+
+- the time continuous stop proximity began;
+- whether the previous derived state was near the boarding stop;
+- whether vehicle-like motion has been observed.
+
+No coordinate pair, person entity ID or device-tracker entity ID is retained.
+
+### Motion without stored coordinates
+
+Motion is calculated from the transient previous/current fixes supplied for one update. The coordinates are discarded after the evidence calculation.
+
+The initial prototype deliberately has three motion bands:
+
+- walking-like: at or below **2.5 m/s**;
+- unknown/ambiguous: between **2.5 and 4.0 m/s**;
+- vehicle-like (`bus_like` evidence): at or above **4.0 m/s**.
+
+The name `bus_like` does **not** mean the motion itself proves a bus. Vehicle-like speed can also be a car, taxi or bicycle. The state model therefore still requires independently matched bus evidence before it can progress to `on_bus_candidate`.
+
+### Stop proximity and dwell
+
+Initial validation thresholds are deliberately internal prototype policy, not user configuration:
+
+- enter boarding-stop radius: **75 m**;
+- exit boarding-stop radius: **120 m**;
+- maximum accepted GPS accuracy: **50 m**;
+- continuous dwell required: **60 s**;
+- location freshness: **120 s**.
+
+The different enter/exit radii provide hysteresis so GPS jitter at the boundary does not repeatedly enter/leave the stop.
+
+Poor or stale fixes freeze inference rather than creating positive evidence.
+
+### Departure timing
+
+`departure_plausible` uses the trusted passenger-facing expected departure time already derived by BODS.
+
+The initial prototype window is:
+
+- up to **3 minutes before** expected departure;
+- up to **5 minutes after** expected departure.
+
+This only permits progression to `possible_boarding`. Timing alone still cannot confirm boarding.
+
+### Trusted bus evidence boundary
+
+The evidence adapter deliberately does **not** repeat live-to-GTFS matching.
+
+These inputs must come from the existing trusted BODS timing/matching layer or a future private coordinator observation derived from it:
+
+- `matched_vehicle_at_stop`;
+- `matched_vehicle_departed`;
+- `route_progress_consistent`;
+- `wrong_service_evidence`;
+- `contradictory_route`.
+
+This is especially important at termini: the evidence must represent an independently matched **outbound** journey. An inbound vehicle is never treated as proof of the outbound service.
+
+`alighting_motion` is also intentionally not inferred from low speed alone. A bus stopped at the destination could otherwise look like a traveller who has alighted. It remains a future stronger derived signal.
 
 ## Confidence model
 
@@ -168,11 +242,24 @@ custom_components/bods_bus_tracker/journey_inference.py is intentionally pure:
 
 This keeps the state policy independently testable and lets us validate inference before deciding how, or whether, to expose it in Home Assistant.
 
+## Current validation state
+
+The pure state model and read-only evidence adapter are implemented and remain isolated from Home Assistant behaviour.
+
+Current branch CI after the evidence-adapter milestone:
+
+- **226 tests passed**;
+- **100.00% integration line coverage**;
+- `journey_inference.py`: 100%;
+- `journey_evidence.py`: 100%;
+- `journey_evidence_ha.py`: 100%;
+- hassfest, HACS validation, strict mypy, version and cache-policy checks: green.
+
 ## Next validation stages
 
-1. Keep the pure model green under synthetic false-positive tests.
-2. Design a read-only Home Assistant adapter that produces the derived evidence.
+1. Define the private coordinator observation needed to supply trusted matched-vehicle departure and route-progress signals **without re-running matching**.
+2. Add a read-only Home Assistant wiring layer that listens to the configured traveller and updates inference state without notifications.
 3. Expose diagnostic/observable state only.
 4. Gather real journey traces.
 5. Review false positives and false negatives.
-6. Only then decide whether on_bus_confirmed is reliable enough to drive ETA/notification behaviour.
+6. Only then decide whether `on_bus_confirmed` is reliable enough to drive ETA/notification behaviour.
