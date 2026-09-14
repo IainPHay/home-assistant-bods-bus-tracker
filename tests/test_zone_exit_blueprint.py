@@ -121,7 +121,7 @@ def test_zone_exit_blueprint_uses_trusted_catchable_state() -> None:
 
     condition = data["conditions"][0]["value_template"]
     assert "catchable_status == 'ok'" in condition
-    assert "departure.get('route')" in condition
+    assert "departure.get('route', '')" in condition
 
     # The trusted entity provides both selected journeys and lead-time policy.
     assert "state_attr(catchable_entity, 'departure')" in content
