@@ -1,13 +1,25 @@
 name: Validate
 
 on:
+  # Feature branches are validated through their pull requests, avoiding a
+  # duplicate push + pull_request run for every development commit.
   push:
+    branches:
+      - main
+    tags:
+      - "v*"
   pull_request:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions: {}
+
+# Only the newest validation for the same PR/ref is useful. Cancelling superseded
+# runs keeps Actions history readable and frees runners for the current commit.
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate-hacs:
@@ -80,7 +92,49 @@ jobs:
           --cov=custom_components.bods_bus_tracker
           --cov-report=term-missing
           --cov-report=xml
-          --cov-fail-under=95
+          --cov-report=json:coverage.json
+          --cov-fail-under=100
+
+      - name: Enforce Integration Quality Scale coverage gates
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("coverage.json").read_text(encoding="utf-8"))
+          prefix = "custom_components/bods_bus_tracker/"
+          modules = {
+              path: data["summary"]
+              for path, data in report["files"].items()
+              if path.startswith(prefix) and path.endswith(".py")
+          }
+
+          config_flow = modules[f"{prefix}config_flow.py"]
+          if config_flow["missing_lines"] != 0:
+              raise SystemExit(
+                  "Quality Scale failure: config_flow.py must have 100% line coverage "
+                  f"(missing {config_flow['missing_lines']} lines)"
+              )
+
+          incomplete = []
+          for path, summary in sorted(modules.items()):
+              if summary["missing_lines"] != 0:
+                  incomplete.append(
+                      f"{path}: missing {summary['missing_lines']} lines"
+                  )
+
+          if incomplete:
+              raise SystemExit(
+                  "Coverage failure: every integration module must remain at 100% "
+                  "line coverage:\n" + "\n".join(incomplete)
+              )
+
+          total = report["totals"]["percent_covered"]
+          print("Config flow coverage: 100.00%")
+          print("Every integration module: 100.00%")
+          print(f"Overall integration coverage: {total:.2f}%")
+          PY
 
 
   validate-strict-typing:

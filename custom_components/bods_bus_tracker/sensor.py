@@ -195,6 +195,60 @@ class NextBusTimingSensor(BODSBusBaseEntity):
         }
 
 
+class CatchableBusSensor(BODSBusBaseEntity):
+    """First departure reachable using current walking time and safety margin."""
+
+    def __init__(
+        self,
+        coordinator: BODSBusCoordinator,
+        entry: BODSBusConfigEntry,
+        subentry: ConfigSubentry,
+    ) -> None:
+        super().__init__(
+            coordinator,
+            entry,
+            subentry,
+            "catchable_bus",
+            "catchable_bus",
+        )
+
+    @property
+    def available(self) -> bool:
+        data = self.coordinator.data.get("catchable", {})
+        return (
+            super().available
+            and isinstance(data, dict)
+            and data.get("status") == "ok"
+            and isinstance(data.get("departure"), dict)
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        if not self.available:
+            return None
+        departure = self.coordinator.data.get("catchable", {}).get("departure", {})
+        route = departure.get("route") if isinstance(departure, dict) else None
+        return str(route) if route is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data.get("catchable", {})
+        if not isinstance(data, dict):
+            return {}
+        departure = data.get("departure")
+        following = data.get("following_departure")
+        return {
+            "status": data.get("status"),
+            "walking_minutes": data.get("walking_minutes"),
+            "margin_minutes": data.get("margin_minutes"),
+            "required_lead_minutes": data.get("required_lead_minutes"),
+            "departure": dict(departure) if isinstance(departure, dict) else None,
+            "following_departure": (
+                dict(following) if isinstance(following, dict) else None
+            ),
+        }
+
+
 class LeaveInSensor(BODSBusBaseEntity):
     """Minutes remaining until the user should leave for the next bus."""
 
@@ -351,6 +405,7 @@ def _entities_for_stop(
             "leave_by",
         ),
         LeaveInSensor(coordinator, entry, subentry),
+        CatchableBusSensor(coordinator, entry, subentry),
     ]
 
     route_counts: dict[str, int] = {}

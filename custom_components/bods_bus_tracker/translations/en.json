@@ -69,7 +69,8 @@
             "walking_time": "Static walking time to stop",
             "dynamic_walking_time": "Use routed dynamic walking time",
             "walking_time_entity": "Travel-time sensor",
-            "max_dynamic_walking_time": "Maximum routed walking time"
+            "max_dynamic_walking_time": "Maximum routed walking time",
+            "catchable_margin": "Catchable-bus safety margin"
           },
           "data_description": {
             "services": "Available route/operator combinations discovered from the regional GTFS timetable. Destination/headsigns are shown where BODS supplies them.",
@@ -78,7 +79,8 @@
             "walking_time": "Fallback minutes from your usual starting point to this boarding stop. Set to 0 if you want leave guidance disabled whenever the dynamic travel-time sensor is unavailable.",
             "dynamic_walking_time": "When enabled, use a Home Assistant travel-time sensor (for example HERE Travel Time or Google Maps Travel Time in walking mode) instead of the static value whenever the sensor is valid.",
             "walking_time_entity": "Select the sensor whose state is the routed walking duration. Supported duration units are seconds, minutes and hours. The sensor is read only; BODS Bus Tracker does not call the routing provider or store its API key.",
-            "max_dynamic_walking_time": "Routed durations above this value are treated as invalid and use the static fallback instead. Default: 120 minutes."
+            "max_dynamic_walking_time": "Routed durations above this value are treated as invalid and use the static fallback instead. Default: 120 minutes.",
+            "catchable_margin": "Extra minutes required after the effective walking time before a departure is considered realistically catchable. Default: 0 minutes."
           }
         },
         "reconfigure": {
@@ -91,7 +93,8 @@
             "walking_time": "Static walking time to stop",
             "dynamic_walking_time": "Use routed dynamic walking time",
             "walking_time_entity": "Travel-time sensor",
-            "max_dynamic_walking_time": "Maximum routed walking time"
+            "max_dynamic_walking_time": "Maximum routed walking time",
+            "catchable_margin": "Catchable-bus safety margin"
           },
           "data_description": {
             "stop_view": "Departures is recommended for ordinary intermediate boarding stops. Use Arrivals or Arrivals and departures where the distinction is useful, especially at a terminus.",
@@ -99,7 +102,8 @@
             "walking_time": "Fallback walking minutes. Existing static behaviour is unchanged when routed dynamic walking time is disabled.",
             "dynamic_walking_time": "Use the selected Home Assistant routed travel-time sensor when valid, falling back automatically to the static walking time if it is unavailable, invalid or stale.",
             "walking_time_entity": "A duration sensor created by a routing integration such as HERE Travel Time or Google Maps Travel Time. Configure that provider separately with walking mode and a dynamic person/device-tracker origin.",
-            "max_dynamic_walking_time": "Routed durations above this value are treated as invalid and use the static fallback instead. Default: 120 minutes."
+            "max_dynamic_walking_time": "Routed durations above this value are treated as invalid and use the static fallback instead. Default: 120 minutes.",
+            "catchable_margin": "Extra minutes required after the effective walking time before a departure is considered realistically catchable. Default: 0 minutes."
           }
         }
       },
@@ -181,6 +185,9 @@
       },
       "gtfs_matches": {
         "name": "GTFS matches"
+      },
+      "catchable_bus": {
+        "name": "Catchable bus"
       }
     },
     "binary_sensor": {

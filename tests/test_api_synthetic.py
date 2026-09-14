@@ -412,6 +412,26 @@ def test_snapshot_health_and_empty_candidate() -> None:
     )
     assert ok["health"] == "ok"
     assert ok["next_bus"]["available"] is True
+    assert ok["stop"] == {
+        "atco": "B",
+        "name": "The Fairway",
+        "latitude": 55.05,
+        "longitude": -1.0,
+    }
+
+    no_gtfs_stop = make_snapshot(
+        [],
+        {},
+        [],
+        now,
+        "B",
+        "The Fairway",
+        services,
+        {},
+        [],
+        180,
+    )
+    assert no_gtfs_stop["stop"] == {"atco": "B", "name": "The Fairway"}
 
     degraded = make_snapshot(
         trips,

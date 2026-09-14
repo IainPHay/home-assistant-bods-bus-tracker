@@ -20,6 +20,7 @@ from custom_components.bods_bus_tracker.binary_sensor import (
 )
 from custom_components.bods_bus_tracker.const import (
     CONF_API_KEY,
+    CONF_CATCHABLE_MARGIN,
     CONF_DYNAMIC_WALKING_TIME,
     CONF_POLL_INTERVAL,
     CONF_REGION,
@@ -39,6 +40,7 @@ from custom_components.bods_bus_tracker.diagnostics import (
 )
 from custom_components.bods_bus_tracker.entity import stop_device_info
 from custom_components.bods_bus_tracker.sensor import (
+    CatchableBusSensor,
     DiagnosticSensor,
     LastUpdateSensor,
     LeaveInSensor,
@@ -70,6 +72,7 @@ def _entry():
                     CONF_WALKING_TIME: 5,
                     CONF_DYNAMIC_WALKING_TIME: False,
                     CONF_WALKING_TIME_ENTITY: "",
+                    CONF_CATCHABLE_MARGIN: 2,
                     CONF_POLL_INTERVAL: 30,
                 },
                 subentry_id="fairway-stop",
@@ -124,6 +127,27 @@ def _sample_data() -> dict:
         "live_vehicle_count": 5,
         "match_stats": {"matched": 4},
         "stop": {"atco": "3100Z199842", "latitude": 55.1, "longitude": -1.6},
+        "catchable": {
+            "status": "ok",
+            "walking_minutes": 5,
+            "margin_minutes": 2,
+            "required_lead_minutes": 7,
+            "departure": {
+                "route": "X18",
+                "destination": "Newcastle",
+                "minutes": 18,
+                "expected": now.isoformat(),
+                "scheduled": now.isoformat(),
+                "source": "scheduled",
+            },
+            "following_departure": {
+                "route": "X14",
+                "minutes": 28,
+                "expected": now.isoformat(),
+                "scheduled": now.isoformat(),
+                "source": "scheduled",
+            },
+        },
     }
 
 
@@ -179,6 +203,14 @@ def test_entity_factory_and_values() -> None:
     leave_in = next(entity for entity in entities if isinstance(entity, LeaveInSensor))
     assert leave_in.native_value == 3
     assert leave_in.extra_state_attributes["walking_minutes"] == 5
+
+    catchable = next(
+        entity for entity in entities if isinstance(entity, CatchableBusSensor)
+    )
+    assert catchable.available is True
+    assert catchable.native_value == "X18"
+    assert catchable.extra_state_attributes["required_lead_minutes"] == 7
+    assert catchable.extra_state_attributes["following_departure"]["route"] == "X14"
 
     service_entities = [
         entity for entity in entities if isinstance(entity, ServiceSensor)
@@ -261,7 +293,7 @@ async def test_platform_setup_adds_stop_entities(hass) -> None:
     await async_setup_sensors(hass, entry, sensor_add)
     assert sensor_add.call_count == 1
     sensor_entities = sensor_add.call_args.args[0]
-    assert len(sensor_entities) == 14
+    assert len(sensor_entities) == 15
     assert sensor_add.call_args.kwargs["config_subentry_id"] == "fairway-stop"
 
     binary_add = MagicMock()

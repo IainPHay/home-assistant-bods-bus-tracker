@@ -1,0 +1,22 @@
+alias: Bus options when leaving zone
+description: >
+  Example automation using the BODS Bus Tracker zone-exit Catchable bus
+  blueprint. Replace every YOUR_* placeholder with entities from your own
+  Home Assistant installation.
+use_blueprint:
+  path: IainPHay/home-assistant-bods-bus-tracker/bods_bus_tracker_zone_exit_catchable.yaml
+  input:
+    traveller: person.YOUR_TRAVELLER
+    origin_zone: zone.YOUR_ORIGIN_ZONE
+    catchable_bus_entity: sensor.YOUR_STOP_CATCHABLE_BUS
+    notification_title: Bus options
+    primary_notification_action:
+      - action: notify.mobile_app_YOUR_PHONE
+        data:
+          title: "{{ bods_title }}"
+          message: "{{ bods_message }}"
+    secondary_notification_action:
+      - action: notify.mobile_app_SECOND_PHONE
+        data:
+          title: "{{ bods_title }}"
+          message: "{{ bods_message }}"

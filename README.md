@@ -32,6 +32,8 @@ If you are helping test v0.6 on another operator or BODS region, see [`TESTING.m
 
 For step-by-step setup guides, worked examples and extended troubleshooting, see the [BODS Bus Tracker Wiki](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki).
 
+For the current Home Assistant Integration Quality Scale self-audit and rule-by-rule evidence, see [`QUALITY_SCALE.md`](QUALITY_SCALE.md).
+
 ## Screenshots
 
 ### Multiple stops under one BODS account
@@ -148,7 +150,8 @@ The integration uses one parent BODS account and one or more **Bus stop** subent
 9. To use routed walking time, enable **Use routed dynamic walking time** and select a Home Assistant **duration sensor**. The integration is provider-neutral: it reads the selected entity's state and does not require it to come from a specific routing integration.
 10. The duration sensor must report a finite non-negative duration in **seconds (`s`)**, **minutes (`min`)** or **hours (`h`)**. HERE Travel Time has been live-validated with a dynamic `person` origin; other providers are compatible in principle when they expose equivalent duration semantics.
 11. Optionally adjust **Maximum routed walking time**; the default is **120 minutes** and longer provider durations fall back to the static walking time. See [`DYNAMIC_WALKING.md`](DYNAMIC_WALKING.md).
-12. Choose the live polling interval. **30 seconds** is recommended.
+12. For v0.7 catchable-bus guidance, optionally set the explicit **Catchable-bus safety margin**. It defaults to **0 minutes** and is added to the effective walking time when deciding which departure is realistically reachable.
+13. Choose the live polling interval. **30 seconds** is recommended.
 
 For a detailed HERE walkthrough, see [Setting up routed walking with HERE Travel Time](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Setting-up-HERE-Travel-Time). For provider-neutral compatibility guidance, see [Routed walking providers](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Routed-walking-providers).
 
@@ -188,7 +191,8 @@ Use the stop subentry's **Reconfigure** action to change:
 - stop view;
 - polling interval;
 - static walking time to the stop;
-- optional routed dynamic walking time, its Home Assistant travel-time sensor, and the per-stop maximum routed walking duration.
+- optional routed dynamic walking time, its Home Assistant travel-time sensor, and the per-stop maximum routed walking duration;
+- the explicit Catchable-bus safety margin used by v0.7 catchability and zone-exit notifications.
 
 To track a different physical boarding point, add the new stop and remove the old one.
 
@@ -198,17 +202,21 @@ Typical ways to use BODS Bus Tracker include:
 
 - **Local departure board** — show the next buses for a nearby boarding point, with live/timetable status and per-route departure times.
 - **Leave-now automation** — use **Leave by**, **Leave in** and **Leave now** to trigger a phone, Alexa or dashboard notification when it is time to walk to the stop.
+- **Zone-exit catchable-bus notification (v0.7 beta)** — when a person leaves a configured zone, notify them of the first departure already proven catchable by the native **Catchable bus** state plus the following departure.
 - **Dynamic walking guidance** — combine a Home Assistant travel-time integration with a `person` or `device_tracker` so walking time changes with the user's current location while retaining a static fallback.
 - **Terminus monitoring** — use **Arrivals and departures** to distinguish incoming buses, approaching arrivals and independently matched outbound vehicles at stand.
 - **Service health monitoring** — use **Data status**, **Last update** and downloadable diagnostics to distinguish live BODS problems from timetable fallback.
 
 ## Automation example
 
-A ready-to-import Home Assistant automation blueprint is included for the most common walking-guidance use case:
+Ready-to-import Home Assistant automation blueprints are included:
 
 - [`BODS Bus Tracker - Leave now notification`](blueprints/automation/bods_bus_tracker_leave_now.yaml) — select a stop's **Leave now** binary sensor and choose any notification or announcement action to run when it turns on.
+- [`BODS Bus Tracker - Zone exit catchable bus notification`](blueprints/automation/bods_bus_tracker_zone_exit_catchable.yaml) — v0.7 beta blueprint that triggers when a selected person leaves a selected zone and consumes the trusted native **Catchable bus** state rather than recreating ETA/walking logic in YAML.
 
-The blueprint is intentionally generic: it can call a mobile notification, Alexa announcement, script or other Home Assistant action without hard-coding a notification service.
+The zone-exit blueprint exposes a ready-to-send `{{ bods_message }}` plus structured `bods_*` variables to a required primary notification action and an optional second action. The safety margin is configured once on the BODS stop and is not duplicated in the automation. See [`ZONE_EXIT_NOTIFICATION.md`](ZONE_EXIT_NOTIFICATION.md) and [`example_zone_exit_catchable_notification.yaml`](example_zone_exit_catchable_notification.yaml).
+
+The blueprints are intentionally provider/notification neutral: they can call Companion App notifications, notify entities, Alexa announcements, scripts or other Home Assistant actions without putting provider credentials into BODS.
 
 More worked automation examples are collected in the [Automation recipes Wiki page](https://github.com/IainPHay/home-assistant-bods-bus-tracker/wiki/Automation-recipes).
 
@@ -255,6 +263,7 @@ Each configured stop creates a device containing the following entities.
 | **Leave by** | Timestamp at which to start walking for the next boardable bus when walking time is configured. |
 | **Leave in** | Minutes until the calculated leave-by time. |
 | **Leave now** | Binary sensor that turns on when it is time to start walking; intended for automations. |
+| **Catchable bus** | v0.7 derived state for the first departure reachable using effective walking time plus the explicit safety margin; exposes a privacy-safe selected departure and the following departure. |
 | **Next <service>** | Next boardable departure for each selected service. |
 | **Data status** | `ok`, `degraded`, or `scheduled_only`. |
 | **Last update** | Last successful tracker update. |
@@ -447,7 +456,7 @@ Ordinary HTTP 403 access failures are kept distinct from invalid credentials. If
 
 ## Roadmap
 
-The next development cycle is tracked in [issue #8](https://github.com/IainPHay/home-assistant-bods-bus-tracker/issues/8). Planned v0.7 work starts with broader routed-walking provider portability/documentation, followed by higher-level catchable-bus and journey-state automation ideas.
+v0.7 development is tracked in [issue #8](https://github.com/IainPHay/home-assistant-bods-bus-tracker/issues/8). Provider-neutral routed walking, native Catchable bus state and the zone-exit notification blueprint are now implemented in the beta branch; the next major functional stage is conservative boarding inference followed by expected-arrival notifications only after that state is proven reliable.
 
 Other longer-term possibilities include broader matching when SIRI aimed-time fields are incomplete, locality/postcode stop search, historical route-segment learning and wider operator/region regression testing.
 

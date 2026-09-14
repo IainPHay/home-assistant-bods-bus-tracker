@@ -48,6 +48,9 @@
       },
       "gtfs_matches": {
         "default": "mdi:link-variant"
+      },
+      "catchable_bus": {
+        "default": "mdi:bus-clock"
       }
     },
     "binary_sensor": {

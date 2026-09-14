@@ -231,6 +231,10 @@ def apply_stop_view(
     snapshot["next_bus"] = dict(selected_next)
     snapshot["next_departure"] = dict(next_departure)
     snapshot["next_arrival"] = dict(next_arrival)
+    # Keep the complete departure sequence only long enough for downstream
+    # catchability derivation. The coordinator removes this private key before
+    # publishing state, so dashboards/diagnostics retain the established limits.
+    snapshot["_departures_for_guidance"] = [dict(row) for row in departures]
     snapshot["departures"] = [dict(row) for row in departures[:12]]
     snapshot["arrivals"] = [dict(row) for row in arrivals[:12]]
     snapshot["services"] = per_service

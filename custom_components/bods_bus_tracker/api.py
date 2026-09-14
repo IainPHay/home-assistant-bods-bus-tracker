@@ -997,6 +997,21 @@ def candidate_dict(
     }
 
 
+def _stop_metadata(
+    trips: list[Trip], target_stop: str, stop_name: str
+) -> dict[str, object]:
+    """Return public GTFS metadata for the monitored stop when available."""
+    metadata: dict[str, object] = {"atco": target_stop, "name": stop_name}
+    for trip in trips:
+        stop = trip.target(target_stop)
+        if stop is None:
+            continue
+        metadata["latitude"] = round(stop.lat, 6)
+        metadata["longitude"] = round(stop.lon, 6)
+        break
+    return metadata
+
+
 def make_snapshot(
     trips: list[Trip],
     gtfs_info: dict[str, object],
@@ -1036,7 +1051,7 @@ def make_snapshot(
     departure_list = [candidate_dict(candidate, now) for candidate in candidates[:12]]
     return {
         "generated_at": now.isoformat(),
-        "stop": {"atco": target_stop, "name": stop_name},
+        "stop": _stop_metadata(trips, target_stop, stop_name),
         "next_bus": candidate_dict(candidates[0] if candidates else None, now),
         "services": per_service,
         "departures": departure_list,

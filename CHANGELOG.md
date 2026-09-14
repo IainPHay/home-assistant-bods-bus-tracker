@@ -1,5 +1,75 @@
 # Changelog
 
+## 0.7.0-beta.4 — in development
+
+### Zone-exit catchable-bus notifications
+
+- Added a reusable Home Assistant automation blueprint that triggers when a selected `person` leaves a selected `zone`.
+- The blueprint consumes the native **Catchable bus** sensor as the trusted source of truth and does not recalculate catchability, ETA, routed/static walking, or the safety margin in YAML.
+- Added one required primary notification/announcement action and an optional second action.
+- Exposes a ready-to-send `bods_message` plus structured `bods_*` variables for custom Companion App, notify-entity, Alexa, script, or other Home Assistant actions.
+- Notification content preserves route, destination, expected/scheduled departure time, live/timetable state, timing/delay detail, effective walking time, explicit safety margin, required lead time, and the following departure.
+- Non-trusted Catchable bus states do not produce a notification.
+- Added dedicated setup/documentation, a concrete automation example, and regression-policy tests that guard against recreating catchability from raw departure lists or local time arithmetic.
+- Controlled real Home Assistant execution validated Catchable bus → blueprint variables → Companion App notify service using timetable fallback; message formatting was then cleaned up and re-tested successfully.
+- A genuine physical zone exit proved the Home Assistant zone trigger works, but exposed a blueprint condition bug: with otherwise valid Catchable bus data, the template could finish by returning the departure timestamp string instead of an explicit boolean true, so Home Assistant stopped at the condition before the notification action.
+- Fixed the condition so valid route/departure checks always render a boolean result, and added regression coverage using representative catchable-departure data.
+- End-to-end confirmation of notification receipt on the target phone remains the final live gate before beta.4 publication after re-importing the corrected blueprint.
+
+### Integration Quality Scale hardening
+
+- Added targeted edge-path regression tests for authentication probing, shared live-feed caching/rate spacing, catchability, GTFS cache validation, stop search ranking, SIRI warning paths and conservative live/GTFS matching guards.
+- `config_flow.py` now measures **100%** line coverage.
+- Every integration Python module now measures **greater than 95%** line coverage.
+- Overall integration line coverage is now **100.00%** with **191 tests passing**.
+- The final defensive paths covered include legacy-device migration, translated GTFS update failure, successful SIRI warning collection, malformed GTFS trip handling, stale realtime candidates, temporary-file cleanup failures and the hourly unchanged-fingerprint cache path.
+- CI now enforces **100% overall line coverage**, **100% for `config_flow.py`**, and **100% for every integration Python module**.
+- Added `QUALITY_SCALE.md` as a durable Bronze/Silver/Gold/Platinum rule-by-rule evidence map.
+
+## 0.7.0-beta.3 — 2026-09-13
+
+### Diagnostics/privacy hardening
+
+- Fixed a real beta.2 diagnostics leak where the private full departure scratch list `_departures_for_guidance` could survive when walking guidance was disabled and therefore appear in Home Assistant diagnostics.
+- Catchable processing now removes the private full departure sequence before every return path, including `walking_disabled`.
+- Diagnostics independently strip `_departures_for_guidance` as a defence-in-depth safeguard.
+- Added regression coverage for walking-disabled cleanup and diagnostics removal of private guidance state and coordinates.
+- The issue did **not** expose `person` / `device_tracker` coordinates or routing-provider credentials; the leaked rows were internal departure candidates and could include trip IDs.
+- Catchable summaries remain restricted to the intended automation-safe fields and still exclude live vehicle coordinates and trip IDs.
+- Real beta.2 validation confirmed positive catchability, explicit-margin rejection, walking-disabled/arrivals-only suppression, and static fallback feeding catchability.
+- CI policy now avoids duplicate push + pull-request validation runs on feature branches; release tags, `main`, pull requests, nightly checks and manual validation remain covered.
+
+## 0.7.0-beta.2 — 2026-09-13
+
+### Catchable-bus state
+
+- Added a derived **Catchable bus** sensor for departure/combined stop views.
+- The sensor identifies the first departure whose expected departure time is at or after the current time plus the effective walking time plus an explicit per-stop safety margin.
+- Added configurable **Catchable-bus safety margin**, default 0 minutes, range 0–30 minutes.
+- The margin is deliberately explicit rather than hidden inside the calculation.
+- Live delay can make a previously unreachable journey catchable because the calculation uses the same passenger-facing expected time already produced by BODS.
+- Exposes the immediately following departure as a fallback/reference for automations.
+- Catchability is downstream of the existing ETA/matching engine and never changes Next bus, live matching or timetable ordering.
+- Catchable state is disabled when walking guidance is disabled and is not produced for Arrivals-only views.
+- Catchable summaries intentionally exclude live vehicle coordinates and trip IDs.
+- The calculation uses the complete ordered departure set internally while preserving the established 12-row public dashboard list.
+
+## 0.7.0-beta.1 — in development
+
+v0.7 starts from the stable v0.6.0 runtime and keeps the conservative BODS/GTFS matching policy unchanged while building higher-level routing/provider and automation capabilities.
+
+### Provider-portability foundation
+
+- Expose the monitored stop's public GTFS `latitude` and `longitude` inside the existing **Next bus** `stop` attribute when timetable metadata are available.
+- Keep stop coordinates separate from traveller/person coordinates: only the public bus-stop location is exposed.
+- This makes it easier to configure HERE or alternative Home Assistant routing providers without manually looking up the boarding-point coordinates.
+- Routed walking remains provider-neutral: BODS Bus Tracker still consumes a Home Assistant duration sensor rather than storing third-party routing credentials or calling a provider directly.
+
+### Development direction
+
+- Alternative routing providers are being evaluated before one is recommended for v0.7. The previously available OpenRouteService HACS custom component is currently unmaintained, so it is not being adopted blindly as the reference path.
+- Catchable-bus notifications and boarding/journey inference remain later v0.7 work and will only be promoted to trusted automations after their state logic is validated.
+
 ## 0.6.0 — 2026-09-13
 
 Stable v0.6 consolidates the beta.2–beta.7 work into one release focused on routed walking guidance, multi-stop efficiency, Home Assistant quality/lifecycle hardening, and more resilient BODS authentication handling.
