@@ -18,15 +18,23 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.bods_bus_tracker import BODSBusRuntimeData
 from custom_components.bods_bus_tracker.api import (
     LiveVehicle,
+    ServiceSpec,
     StopChoice,
     StopTime,
     Trip,
     _calling_trip_ids_for_stop,
     _stop_metadata,
+    calculate_candidates,
+    estimate_delay_and_progress,
     fuzzy_match_trip,
+    parse_siri,
+    search_stops,
     validate_gtfs,
 )
-from custom_components.bods_bus_tracker.binary_sensor import LeaveNowBinarySensor
+from custom_components.bods_bus_tracker.binary_sensor import (
+    LeaveNowBinarySensor,
+    async_setup_entry as async_setup_binary_sensors,
+)
 from custom_components.bods_bus_tracker.catchable import apply_catchable_guidance
 from custom_components.bods_bus_tracker.config_flow import _async_validate_api_key
 from custom_components.bods_bus_tracker.const import (
@@ -54,6 +62,12 @@ from custom_components.bods_bus_tracker.live_feed import (
 from custom_components.bods_bus_tracker.live_feed_model import (
     bods_payload_is_invalid_token,
 )
+from custom_components.bods_bus_tracker.sensor import (
+    CatchableBusSensor,
+    NextBusSensor,
+)
+from custom_components.bods_bus_tracker.stop_view import _within_five_minutes
+from custom_components.bods_bus_tracker.walking import normalise_dynamic_walking_minutes
 
 
 TZ = ZoneInfo("Europe/London")
@@ -349,3 +363,311 @@ async def test_gtfs_freshness_check_failure_falls_through_to_download(
 
     assert result == target
     assert session.calls == 1
+
+
+def test_stop_search_scoring_edge_paths(tmp_path) -> None:
+    """Stop search covers prefix, exact-name, token and substring ranking paths."""
+    path = tmp_path / "stops.zip"
+    rows = [
+        ",blank,Ignored,55.0,-1.0",
+        "ABCD1234X,sms1,Alpha Stop,55.0,-1.0",
+        "NAME1,sms2,Exact Place,55.0,-1.0",
+        "PREFIX1,sms3,Prefix Place,55.0,-1.0",
+        "TOKENS1,sms4,Main Central Exchange Road,55.0,-1.0",
+        "COMMA1,sms5,\"Main, Central\",55.0,-1.0",
+    ]
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "stops.txt",
+            "stop_id,stop_code,stop_name,stop_lat,stop_lon\n"
+            + "\n".join(rows)
+            + "\n",
+        )
+
+    assert search_stops(path, "ABCD")[0].stop_id == "ABCD1234X"
+    assert search_stops(path, "Exact Place")[0].stop_id == "NAME1"
+    assert search_stops(path, "Pref")[0].stop_id == "PREFIX1"
+    assert search_stops(path, "central road")[0].stop_id == "TOKENS1"
+    assert search_stops(path, ",")[0].stop_id == "COMMA1"
+
+
+def test_siri_warning_lists_missing_destination_and_recorded_time() -> None:
+    """Incomplete aimed/recorded times are surfaced as explicit parser warnings."""
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <Siri xmlns="http://www.siri.org.uk/siri">
+      <ServiceDelivery>
+        <VehicleMonitoringDelivery>
+          <VehicleActivity>
+            <MonitoredVehicleJourney>
+              <LineRef>X18</LineRef>
+              <OperatorRef>ANUM</OperatorRef>
+              <VehicleRef>vehicle-1</VehicleRef>
+              <VehicleLocation>
+                <Latitude>55.0</Latitude>
+                <Longitude>-1.0</Longitude>
+              </VehicleLocation>
+              <OriginAimedDepartureTime>2026-09-14T14:00:00+01:00</OriginAimedDepartureTime>
+            </MonitoredVehicleJourney>
+          </VehicleActivity>
+        </VehicleMonitoringDelivery>
+      </ServiceDelivery>
+    </Siri>
+    """
+
+    vehicles, _, warnings = parse_siri(
+        xml,
+        [ServiceSpec("ANUM", "X18", "Arriva")],
+    )
+
+    assert vehicles == []
+    assert "DestinationAimedArrivalTime" in warnings[0]
+    assert "RecordedAtTime" in warnings[0]
+
+
+def _trip(
+    trip_id: str,
+    origin_seconds: int,
+    destination_seconds: int,
+    *,
+    origin_id: str = "A",
+    destination_id: str = "B",
+) -> Trip:
+    """Create a two-stop trip for matching edge tests."""
+    return Trip(
+        trip_id,
+        "X18",
+        "ANUM",
+        "Arriva",
+        "svc",
+        destination_id,
+        "",
+        [
+            StopTime(origin_id, 1, origin_seconds, origin_seconds, 55.0, -1.0, origin_id),
+            StopTime(
+                destination_id,
+                2,
+                destination_seconds,
+                destination_seconds,
+                55.1,
+                -1.1,
+                destination_id,
+            ),
+        ],
+    )
+
+
+def _vehicle(
+    origin: datetime,
+    destination: datetime,
+    recorded: datetime,
+    *,
+    origin_id: str = "A",
+    destination_id: str = "B",
+    lat: float = 55.0,
+    lon: float = -1.0,
+) -> LiveVehicle:
+    """Create a live vehicle for matching edge tests."""
+    return LiveVehicle(
+        route="X18",
+        operator_noc="ANUM",
+        vehicle="vehicle",
+        dated_ref="",
+        origin_ref=origin_id,
+        destination_ref=destination_id,
+        origin_dt=origin,
+        destination_dt=destination,
+        recorded_dt=recorded,
+        lat=lat,
+        lon=lon,
+        block_ref="",
+        ticket_service="",
+        journey_code="",
+    )
+
+
+def test_candidate_matching_rejects_stale_and_exact_ambiguity() -> None:
+    """Stale vehicles and duplicate exact signatures never become live matches."""
+    now = datetime(2026, 9, 14, 13, 0, tzinfo=TZ)
+    trip = _trip("one", 14 * 3600, 15 * 3600)
+
+    stale = _vehicle(
+        datetime(2026, 9, 14, 14, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 15, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 12, 0, tzinfo=TZ),
+    )
+    _, stats = calculate_candidates([trip], [stale], now, "B", 60)
+    assert stats["stale"] == 1
+
+    duplicate = _trip("two", 14 * 3600, 15 * 3600)
+    exact = _vehicle(
+        datetime(2026, 9, 14, 14, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 15, 0, tzinfo=TZ),
+        now,
+    )
+    _, stats = calculate_candidates([trip, duplicate], [exact], now, "B", 3600)
+    assert stats["ambiguous"] == 1
+
+
+def test_candidate_matching_fuzzy_outcomes_and_progress_guard() -> None:
+    """Fuzzy matching distinguishes unmatched, ambiguous and usable candidates."""
+    now = datetime(2026, 9, 14, 13, 0, tzinfo=TZ)
+    trip = _trip("one", 14 * 3600, 15 * 3600)
+
+    unmatched = _vehicle(
+        datetime(2026, 9, 14, 14, 10, tzinfo=TZ),
+        datetime(2026, 9, 14, 15, 10, tzinfo=TZ),
+        now,
+    )
+    _, stats = calculate_candidates([trip], [unmatched], now, "B", 3600)
+    assert stats["unmatched"] == 1
+
+    trip_later = _trip("two", 14 * 3600 + 120, 15 * 3600 + 120)
+    ambiguous = _vehicle(
+        datetime(2026, 9, 14, 14, 1, tzinfo=TZ),
+        datetime(2026, 9, 14, 15, 1, tzinfo=TZ),
+        now,
+    )
+    _, stats = calculate_candidates(
+        [trip, trip_later],
+        [ambiguous],
+        now,
+        "B",
+        3600,
+    )
+    assert stats["ambiguous"] == 1
+
+    one_stop = Trip(
+        "single",
+        "X18",
+        "ANUM",
+        "Arriva",
+        "svc",
+        "A",
+        "",
+        [StopTime("A", 1, 14 * 3600, 14 * 3600, 55.0, -1.0, "A")],
+    )
+    fuzzy = _vehicle(
+        datetime(2026, 9, 14, 14, 1, tzinfo=TZ),
+        datetime(2026, 9, 14, 14, 1, tzinfo=TZ),
+        now,
+        destination_id="A",
+    )
+    _, stats = calculate_candidates([one_stop], [fuzzy], now, "A", 3600)
+    assert stats["matched_fuzzy"] == 1
+
+    candidates, _ = calculate_candidates([trip], [], now, "NO_SUCH_STOP", 3600)
+    assert candidates == []
+
+
+def test_candidate_rejects_vehicle_that_has_passed_boarding_stop() -> None:
+    """A matched vehicle already beyond an origin stop is not boardable there."""
+    trip = _trip("one", 13 * 3600, 14 * 3600)
+    vehicle = _vehicle(
+        datetime(2026, 9, 14, 13, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 14, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 13, 30, tzinfo=TZ),
+        lat=55.05,
+        lon=-1.05,
+    )
+
+    candidates, stats = calculate_candidates(
+        [trip],
+        [vehicle],
+        datetime(2026, 9, 14, 13, 31, tzinfo=TZ),
+        "A",
+        3600,
+    )
+
+    assert stats["matched_exact"] == 1
+    assert candidates == []
+
+
+def test_delay_estimator_rejects_implausible_delay() -> None:
+    """A route projection with an implausible time offset is not used."""
+    trip = _trip("one", 8 * 3600, 9 * 3600)
+    vehicle = _vehicle(
+        datetime(2026, 9, 14, 8, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 9, 0, tzinfo=TZ),
+        datetime(2026, 9, 14, 20, 0, tzinfo=TZ),
+        lat=55.05,
+        lon=-1.05,
+    )
+
+    assert estimate_delay_and_progress(vehicle, trip, date(2026, 9, 14)) is None
+
+
+def test_small_entity_and_helper_unavailable_paths() -> None:
+    """Entity helpers expose unavailable state rather than fabricated values."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="BODS Bus Tracker",
+        data={CONF_API_KEY: "key"},
+        version=2,
+        subentries_data=[
+            ConfigSubentryData(
+                data={
+                    CONF_REGION: "north_east",
+                    CONF_STOP_ATCO: "STOP",
+                    CONF_STOP_NAME: "Example",
+                    CONF_SERVICES: ["ANUM|X18"],
+                },
+                subentry_id="stop",
+                subentry_type=SUBENTRY_TYPE_STOP,
+                title="Example (STOP)",
+                unique_id="north_east:STOP",
+            )
+        ],
+    )
+    subentry = next(iter(entry.subentries.values()))
+    coordinator = MagicMock()
+    coordinator.last_update_success = True
+    coordinator.data = {
+        "next_bus": {"available": False},
+        "catchable": {"status": "walking_disabled"},
+    }
+
+    next_bus = NextBusSensor(coordinator, entry, subentry)
+    catchable = CatchableBusSensor(coordinator, entry, subentry)
+
+    assert next_bus.native_value is None
+    assert catchable.native_value is None
+
+    coordinator.data["catchable"] = "invalid"
+    assert catchable.extra_state_attributes == {}
+
+    assert _within_five_minutes({"minutes": 3}) is True
+    assert normalise_dynamic_walking_minutes(None, "min", 120) is None
+
+
+async def test_binary_platform_skips_stop_without_coordinator(hass) -> None:
+    """Platform setup safely skips a subentry without runtime coordinator state."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="BODS Bus Tracker",
+        data={CONF_API_KEY: "key"},
+        version=2,
+        subentries_data=[
+            ConfigSubentryData(
+                data={
+                    CONF_REGION: "north_east",
+                    CONF_STOP_ATCO: "STOP",
+                    CONF_STOP_NAME: "Example",
+                    CONF_SERVICES: ["ANUM|X18"],
+                },
+                subentry_id="stop",
+                subentry_type=SUBENTRY_TYPE_STOP,
+                title="Example (STOP)",
+                unique_id="north_east:STOP",
+            )
+        ],
+    )
+    entry.runtime_data = BODSBusRuntimeData(
+        coordinators={},
+        live_feed=MagicMock(),
+        timetables={},
+    )
+    add_entities = MagicMock()
+
+    await async_setup_binary_sensors(hass, entry, add_entities)
+
+    add_entities.assert_not_called()
