@@ -2,25 +2,26 @@
 
 This guide shows how to use **HERE Travel Time** as the routed walking-time source for BODS Bus Tracker.
 
-HERE was the routed provider used for the real v0.6 Home Assistant validation. The BODS integration itself remains provider-neutral: HERE creates a normal Home Assistant duration sensor and BODS simply reads that entity.
+HERE was the routed provider used for real Home Assistant validation. The BODS integration itself remains provider-neutral: HERE creates a normal Home Assistant duration sensor and BODS simply reads that entity.
 
 ## What this gives you
 
 With routed walking enabled, BODS Bus Tracker can use the traveller's current Home Assistant location to calculate walking time to the bus stop.
 
-That effective walking time is then used for:
+That effective walking time is used for:
 
 - **Leave by**;
 - **Leave in**;
-- **Leave now**.
+- **Leave now**;
+- v0.7 **Catchable bus** selection.
 
-It does **not** alter BODS live matching, the selected departure, or the bus ETA.
+It does **not** alter BODS live matching, the selected timetable journey or the underlying ETA engine.
 
 ## 1. Create a HERE API key
 
 HERE Travel Time requires a HERE API key.
 
-The official Home Assistant documentation currently states that HERE's **Base Plan includes 5,000 free transactions per month**. Home Assistant notes that one normally polled route can remain within that allowance, but on-demand/custom polling can consume the quota more quickly.
+The official Home Assistant documentation currently states that HERE's **Base Plan includes 5,000 free transactions per month**. Home Assistant notes that on-demand/custom polling can consume quota more quickly.
 
 Create the API key using HERE's current developer/platform instructions:
 
@@ -45,9 +46,7 @@ For a normal "walk from the traveller to this stop" configuration, use the faste
 
 When HERE asks for the origin, choose **Using an entity**.
 
-Select the Home Assistant entity whose location should represent the traveller.
-
-A typical choice is:
+Select the Home Assistant entity whose location should represent the traveller, for example:
 
 ```text
 person.traveller
@@ -55,21 +54,32 @@ person.traveller
 
 A suitable `device_tracker` can also be used if it exposes current coordinates.
 
-The v0.6 live validation used a Home Assistant `person` entity as the dynamic origin.
+### Privacy boundary
 
-### Important
-
-HERE owns the location lookup. BODS Bus Tracker does not read or store the traveller's coordinates; it only reads the resulting duration sensor.
+HERE owns the location lookup. BODS Bus Tracker does not need to copy the traveller's coordinates into its own state or diagnostics; it only reads the resulting duration sensor.
 
 ## 4. Configure the destination
 
-For the destination, choose **Using a map location** and place the destination at the bus stop.
+For the destination, choose **Using a map location** and place the destination at the physical bus stop/stand.
 
-For best results, use the actual boarding stop/stand coordinates rather than the centre of a large bus station.
-
-For example, the v0.6 Haymarket validation used the coordinates of **Haymarket Bus Station Stand Q**, not simply "Newcastle city centre".
+For best results, use the actual boarding point rather than the centre of a large bus station.
 
 You do not need to create a Home Assistant zone for the stop unless you want one for another automation.
+
+### Important for multiple BODS stops
+
+Create a dedicated routed duration sensor for each boarding stop you expect BODS to evaluate.
+
+For example:
+
+```text
+HERE: traveller → The Fairway
+HERE: traveller → Haymarket Stand Q
+```
+
+Each BODS stop should select the HERE Duration entity whose destination matches that stop.
+
+Do **not** casually share one HERE duration sensor between several BODS stops. HERE may be returning a perfectly valid walking time to a different destination, and BODS cannot infer that mismatch from the numeric duration alone.
 
 ## 5. Finish HERE setup
 
@@ -85,25 +95,19 @@ sensor.here_travel_time_duration
 
 Your exact entity ID may differ.
 
-Do **not** select:
-
-- Distance;
-- Origin;
-- Destination.
-
-For pedestrian routing, the normal **Duration** sensor is the value BODS Bus Tracker needs.
+Do **not** select Distance, Origin or Destination. BODS needs the normal duration sensor.
 
 ## 6. Check the HERE Duration sensor first
 
 Before configuring BODS, confirm the HERE sensor is healthy.
 
-Go to **Settings → Tools → States** and find the HERE Duration entity.
+Go to **Developer Tools → States** and find the HERE Duration entity.
 
 You should see:
 
 - a numeric state;
 - device class: duration;
-- a duration unit, commonly minutes in the UI.
+- a duration unit, commonly minutes.
 
 Example:
 
@@ -114,11 +118,7 @@ device_class: duration
 friendly_name: HERE Travel Time Duration
 ```
 
-BODS Bus Tracker accepts duration sensors in:
-
-- seconds (`s`);
-- minutes (`min`);
-- hours (`h`).
+BODS Bus Tracker accepts duration sensors in seconds (`s`), minutes (`min`) or hours (`h`).
 
 ## 7. Select the HERE sensor in BODS Bus Tracker
 
@@ -130,27 +130,28 @@ Open the bus stop and choose **Reconfigure**.
 
 Set:
 
-- **Static walking time to stop**: your safe fallback value;
+- **Static walking time to stop**: a realistic safe fallback;
 - **Use routed dynamic walking time**: On;
-- **Travel-time sensor**: the HERE **Duration** entity;
+- **Travel-time sensor**: the HERE **Duration** entity for this exact stop;
 - **Maximum routed walking time**: normally leave at **120 minutes**;
+- **Catchable-bus safety margin**: v0.7 only; choose the explicit extra margin you want;
 - **Live update interval**: normally **30 seconds** for BODS.
 
 Then submit the reconfiguration.
 
-### Static walking time is still important
+### Static walking time remains important
 
 The static value is the fallback used when the routed source is temporarily unavailable, stale, invalid or above the configured maximum.
 
 For normal use, set it to a realistic conservative walking time rather than zero.
 
-A zero fallback is useful for testing, but it means leave guidance is disabled whenever the routed source cannot be trusted.
+A zero fallback is useful for testing, but it means walking/catchable guidance is disabled whenever the routed source cannot be trusted.
 
 ## 8. Verify BODS is using HERE
 
-Open the BODS **Next bus** entity in **Settings → Tools → States**.
+Open the BODS **Next bus** entity in **Developer Tools → States**.
 
-When HERE is valid, the BODS attributes should include values similar to:
+When HERE is valid, attributes should resemble:
 
 ```yaml
 walking_minutes: 9
@@ -165,20 +166,34 @@ leave_in_minutes: 12
 leave_now: false
 ```
 
-BODS rounds a valid fractional routed duration **up** to a whole minute for leave guidance.
+BODS rounds a valid fractional routed duration **up** to a whole minute for passenger guidance.
 
-For example:
+## 9. Verify Catchable bus in v0.7
 
-```text
-HERE duration = 8.4 min
-effective walking_minutes = 9
+Open the stop's **Catchable bus** entity.
+
+A trusted state resembles:
+
+```yaml
+status: ok
+walking_minutes: 9
+margin_minutes: 3
+required_lead_minutes: 12
+departure:
+  route: X18
+  expected: "..."
+following_departure:
+  route: X18
+  expected: "..."
 ```
 
-## 9. Understand fallback behaviour
+The safety margin is added by BODS after the effective walking time has been resolved.
+
+Catchability does not cause additional HERE API requests.
+
+## 10. Understand fallback behaviour
 
 Temporary routing problems should not break bus tracking.
-
-Examples:
 
 ### HERE unavailable
 
@@ -192,11 +207,13 @@ walking_source_status: unavailable
 
 BODS continues using the static walking time.
 
-### HERE route is longer than the configured maximum
+### HERE route exceeds the configured maximum
 
-The routed result is rejected and the static fallback is used.
+The routed result is rejected and static fallback is used.
 
-This protects against obviously inappropriate routes, stale location data or accidental configuration mistakes.
+This protects against excessive routes and some configuration/location failures, but it is **not** a substitute for configuring the correct destination.
+
+A route to the wrong stop can still be numerically plausible and pass the maximum check.
 
 ### HERE recovers
 
@@ -208,13 +225,13 @@ BODS raises a Home Assistant Repair because the configured entity genuinely no l
 
 The Repair self-clears when the configuration is corrected or routed walking is disabled.
 
-## 10. API quota and polling
+## 11. API quota and polling
 
-The **BODS live update interval** and the **HERE polling interval** are separate things.
+The **BODS live update interval** and the **HERE polling interval** are separate.
 
-A 30-second BODS interval does **not** cause HERE to be queried every 30 seconds. BODS only reads the latest state already held by Home Assistant.
+A 30-second BODS interval does **not** cause HERE to be queried every 30 seconds. BODS only reads the latest state held by Home Assistant.
 
-The current Home Assistant HERE integration normally refreshes the route every **5 minutes**. HERE owns those API calls and the associated quota; BODS does not add any HERE requests of its own.
+The current Home Assistant HERE integration normally refreshes the route on its own cadence. HERE owns those API calls and the associated quota; BODS does not add HERE requests.
 
 Home Assistant also supports on-demand updates with:
 
@@ -224,19 +241,19 @@ target:
   entity_id: sensor.here_travel_time_duration
 ```
 
-Use on-demand updating carefully. Every provider refresh can consume API quota.
+Use on-demand updating carefully because provider refreshes can consume quota.
 
-If you want to replace HERE's normal polling with a custom interval, Home Assistant supports disabling polling in the integration's **System options** and then calling `homeassistant.update_entity` from an automation. Home Assistant documents a 10-second debounce for this action.
+## 12. Zone-exit notification
 
-The Home Assistant HERE documentation currently states that the Base Plan provides **5,000 free transactions per month**, so frequent unconditional polling is not a good default.
+Once Catchable bus reports `status: ok`, the v0.7 beta zone-exit blueprint can notify a traveller when they leave a chosen origin zone.
 
-A better pattern is to refresh only when it is useful, for example around an expected journey or after meaningful movement.
+The blueprint consumes the Catchable bus state; it does not calculate another walking route itself.
 
-## 11. Privacy
+See [Catchable bus and zone-exit notifications](Catchable-bus-and-zone-exit-notifications).
 
-BODS Bus Tracker deliberately keeps the routing-provider boundary separate.
+## 13. Privacy
 
-BODS diagnostics should contain the selected entity ID, for example:
+BODS diagnostics may contain the configured duration entity ID, for example:
 
 ```text
 sensor.here_travel_time_duration
@@ -245,18 +262,18 @@ sensor.here_travel_time_duration
 They should not contain:
 
 - the HERE API key;
-- the traveller's person/device coordinates;
+- traveller person/device coordinates;
 - HERE account credentials.
 
-Always review diagnostics yourself before posting them publicly.
+Always review diagnostics before posting them publicly.
 
 ## Troubleshooting
 
 ### BODS shows `walking_source_status: unavailable`
 
-Check the HERE Duration entity directly in **Settings → Tools → States**.
+Check the HERE Duration entity directly in **Developer Tools → States**.
 
-If HERE itself is unavailable, BODS is behaving correctly by using the static fallback.
+If HERE itself is unavailable, BODS is behaving correctly by using static fallback.
 
 ### BODS shows `walking_source_status: invalid`
 
@@ -265,24 +282,28 @@ Check:
 - the selected entity is the **Duration** sensor;
 - the state is numeric;
 - the unit is `s`, `min` or `h`;
-- the duration is below **Maximum routed walking time**.
+- the duration is below **Maximum routed walking time**;
+- the HERE destination is the same boarding stop BODS is evaluating.
 
-### The walking time does not change as the person moves
+### Walking time does not change as the person moves
 
-First check that the Home Assistant `person` / `device_tracker` coordinates are actually changing.
+First check that the Home Assistant `person` / `device_tracker` coordinates are changing.
 
 Then check when HERE last updated. BODS does not force HERE to recalculate on every bus poll.
 
-### The walking time is unexpectedly huge
+### Walking time is unexpectedly huge
 
-This can be completely valid if the person is geographically far from the stop.
+Check the destination first.
 
-During v0.6 testing, the same HERE route was roughly **407 minutes** while the tracked person was far from Newcastle, then about **22 minutes** when near Haymarket.
+A large duration can be completely legitimate if the traveller is far from the stop, but a destination accidentally pointing at another monitored stop can also produce a valid-but-wrong value.
 
-The maximum routed walking-time setting exists specifically so a very large value can fall back safely during ordinary use.
+The maximum routed walking setting can trigger static fallback for excessive values, but correct stop-specific routing remains the preferred solution.
 
 ## Related pages
 
 - [Routed walking providers](Routed-walking-providers)
+- [Catchable bus and zone-exit notifications](Catchable-bus-and-zone-exit-notifications)
 - [Automation recipes](Automation-recipes)
 - [Troubleshooting live data](Troubleshooting-live-data)
+
+---

@@ -3,6 +3,7 @@
 - [Home](Home)
 - [HERE Travel Time setup](Setting-up-HERE-Travel-Time)
 - [Routed walking providers](Routed-walking-providers)
+- [Catchable bus & zone-exit notifications](Catchable-bus-and-zone-exit-notifications)
 - [Dashboard examples](Dashboard-examples)
 - [Automation recipes](Automation-recipes)
 - [Terminus setup](Terminus-setup)
@@ -13,3 +14,5 @@
 
 [Repository README](https://github.com/IainPHay/home-assistant-bods-bus-tracker)
 [Stable release](https://github.com/IainPHay/home-assistant-bods-bus-tracker/releases/latest)
+
+---
